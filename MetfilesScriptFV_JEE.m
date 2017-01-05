@@ -1,5 +1,5 @@
 function MetfilesScriptFV_JEE(UT,OW)
-addpath(genpath('/auto/fhome/julie/matlab/tlab'));
+addpath(genpath('/auto/fhome/julie/Code/tlab'));
 addpath(genpath('/auto/k5/matlab714/toolbox/stats/stats'));
 %cd /auto/fdata/julie/h5
 cd /auto/k6/julie/h5
@@ -28,7 +28,7 @@ for ss=1:length(Subjects)
         [OldWav]=relate_sound_files(Indiv);
         Idir=fullfile(input_dir, Indiv);
         Outdir=fullfile(output_dir, Indiv);
-        matfiles=dir(fullfile(Outdir,'FirstVoc*.mat'));
+        matfiles=dir(fullfile(Outdir,'FirstVoc_*.mat'));
         LM=length(matfiles);
         
         h5filesall=dir(fullfile(Idir,'Site*.h5'));
