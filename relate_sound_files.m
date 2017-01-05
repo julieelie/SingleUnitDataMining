@@ -1,7 +1,7 @@
 function [OldWav]=relate_sound_files(Indiv)
 
 % Find on which machine we are and where are stored the data
-    DataDir = '/auto/fdata/julie';
+    DataDir = '/auto/tdrive/fdata/julie';
     if ismac()
             [status username] = system('who am i');
             if strcmp(strtok(username), 'frederictheunissen')
