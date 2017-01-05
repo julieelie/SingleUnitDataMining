@@ -127,7 +127,7 @@ if classId ~= 0
         end
         WavIndices{isound} = [1; EndIndex_sound];
         SectionWave{isound} = sound_in(WavIndices{isound}(1): WavIndices{isound}(2));
-        SectionLength(isound) = length(sound_in)/samprate*1000;
+        SectionLength(isound) = length(SectionWave{isound})/samprate*1000;
         
         %Determine if there is enough background response after the end of
         %stim to complete the neural response up to Win ms
