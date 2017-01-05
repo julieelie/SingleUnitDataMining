@@ -1,5 +1,8 @@
 function MetfilesScriptF1s_JEE(UT,OW)
-addpath(genpath('/auto/fhome/julie/Code/tlab'));
+addpath(genpath('/auto/fhome/julie/Code/tlab/src'));
+addpath(genpath('/auto/fhome/julie/Code/SingleUnitDataMining'));
+rmpath(genpath('/auto/fhome/julie/Code/tlab/src/hedi'));
+addpath(genpath('/auto/fhome/julie/Code/'));
 addpath(genpath('/auto/k5/matlab714/toolbox/stats/stats'));
 %cd /auto/fdata/julie/h5
 cd /auto/k6/julie/h5
