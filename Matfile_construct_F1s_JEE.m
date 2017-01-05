@@ -106,6 +106,8 @@ if classId ~= 0
                     stim_name = strcat('/Users/elie/Documents/CODE/data', stim_name(18:end));
                 end
             end
+        else
+            stim_name = ['/auto/tdrive/' stim_name(strfind(stim_name,'fdata'):end)];
         end
         [sound_in, samprate] = audioread(stim_name);
         if pl>0
