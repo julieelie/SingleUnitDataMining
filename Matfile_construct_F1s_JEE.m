@@ -70,6 +70,7 @@ if classId ~= 0
     Trials_GaussFiltered = cell(nfiles,1);
     PSTH=cell(nfiles,1);
     PSTH_GaussFiltered=cell(nfiles,1);
+    HwidthSpikes = cell(nfiles,1);
     Rate_BG=nan(nfiles,1);
     Spectro=cell(nfiles,1);
     
@@ -179,7 +180,7 @@ if classId ~= 0
 
         %% Isolate spikes that relate to the section and...
         ...calculate average (psth) for this section.
-        [Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},~,~,~] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win, pl);
+        [Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win, pl);
 
         %% Plot sound pressure waveform, spectrogram and psth isolated
         if pl>0
@@ -272,6 +273,7 @@ if classId ~= 0
     Res.Spectroto=Spectroto;
     Res.Spectrofo=Spectrofo;
     Res.PSTH_GaussFiltered=PSTH_GaussFiltered;
+    Res.HwidthSpikes = HwidthSpikes;
 
     if ismac()
             [~, username] = system('who am i');

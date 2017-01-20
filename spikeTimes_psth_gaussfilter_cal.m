@@ -1,4 +1,4 @@
-function [Section_Trials,Spikesfiltered,Psth,GaussFiltered_psth, Stim_mean_rate, Spike_std_rate, Spike_rate_stim] = spikeTimes_psth_gaussfilter_cal(begInd, endInd, samprate,response,spike_rate_bg, Win, Fig)
+function [Section_Trials,Spikesfiltered,Psth,GaussFiltered_psth, Stim_mean_rate, Spike_std_rate, Spike_rate_stim, HwidthSpikes] = spikeTimes_psth_gaussfilter_cal(begInd, endInd, samprate,response,spike_rate_bg, Win, Fig)
 % here Section_Trials is now transformed from s to ms
 %% This function calculates the PSTH, isolate arrival times of spikes...
 ...in reference to the begining of the section (begInd).
@@ -37,7 +37,7 @@ Psth = sum(Spike_array,1)./ntrials;
 % Calculated the smoothed psth (convolve each spike with a gaussian which
 % width is twice the distance to the closest spike
 alpha_param=3;
-[Spikesfiltered,~] = gauss_filter_varying_window(Spike_array,alpha_param, Fig);
+[Spikesfiltered,~, HwidthSpikes] = gauss_filter_varying_window(Spike_array,alpha_param, Fig);
 GaussFiltered_psth = mean(Spikesfiltered,1);
 
 % elongate the smoothed psth vector if the section was shorter than Windur ms
