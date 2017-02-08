@@ -20,7 +20,7 @@ if nargin==1
 end
 
 input_dir=pwd;
-output_dir='/auto/k6/julie/matfile';
+output_dir='/auto/tdrive/julie/k6/julie/matfile';
 Subjects = dir(input_dir);
 ExistingFiles=0;
 
