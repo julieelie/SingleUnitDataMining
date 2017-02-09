@@ -1,12 +1,9 @@
-function [Section_Trials,Spikesfiltered,Psth,GaussFiltered_psth, Stim_mean_rate, Spike_std_rate, Spike_rate_stim, HwidthSpikes] = spikeTimes_psth_gaussfilter_cal(begInd, endInd, stim_samprate,response,spike_rate_bg, Win,response_samprate, JackKnifeSwitch,Fig)
+function [Section_Trials,Spikesfiltered,Psth,GaussFiltered_psth, JackKnifeSpikefiltered, Stim_mean_rate, Spike_std_rate, Spike_rate_stim, HwidthSpikes] = spikeTimes_psth_gaussfilter_cal(begInd, endInd, stim_samprate,response,spike_rate_bg, Win,response_samprate, Fig)
 % here Section_Trials is now transformed from s to ms
 %% This function calculates the PSTH, isolate arrival times of spikes...
 ...in reference to the begining of the section (begInd).
-if nargin<8
-    JackKnifeSwitch=1;
-end
 
-if nargin<9
+if nargin<8
     Fig=0;
 end
 
@@ -45,7 +42,7 @@ Psth = sum(Spike_array,1)./ntrials;
 % Calculated the smoothed psth (convolve each spike with a gaussian which
 % width is twice the distance to the closest spike considering all trials)
 alpha_param=3;
-if JackKnifeSwitch % ntrials gaussian filtered spike patterns are calculated using ntrials-1 trials and the gaussian filtered spike pattern using all trials is calcuated using a convolution on the concatenation of all trials
+ % ntrials gaussian filtered spike patterns are calculated using ntrials-1 trials and the gaussian filtered spike pattern using all trials is calcuated using a convolution on the concatenation of all trials
     Spike_array_JK = nan(ntrials+1,ntimebins);
     for it = 1:ntrials
         Spike_array_local = Spike_array;
@@ -53,16 +50,33 @@ if JackKnifeSwitch % ntrials gaussian filtered spike patterns are calculated usi
         Spike_array_JK(it,:) = sum(Spike_array_local,1);
     end
     Spike_array_JK(ntrials+1,:) = sum(Spike_array,1);
-    [Spikesfiltered,~, HwidthSpikes] = gauss_filter_varying_window(Spike_array_JK,alpha_param, ceil([repmat(ntrials-1,ntrials,1); ntrials]./2), Fig);
-    GaussFiltered_psth = Spikesfiltered(ntrials+1,:)./ntrials;% This contain the gaussian filtered spike pattern calculated with all trials.
-    Spikesfiltered = Spikesfiltered(1:ntrials,:)./(ntrials-1);% This contain the ntrials gaussian filtered spike patterns calculated with ntrials-1 trials.
-else % each trial is convolved with time varying gaussians and trials are averaged after convolution to obtain the PSTH
-    [Spikesfiltered,~, HwidthSpikes] = gauss_filter_varying_window(Spike_array,alpha_param, Fig);
-    GaussFiltered_psth = mean(Spikesfiltered,1);
-end
+    [Spikesfiltered1,~, HwidthSpikes] = gauss_filter_varying_window(Spike_array_JK,alpha_param, ceil([repmat(ntrials-1,ntrials,1); ntrials]./2), Fig);
+    GaussFiltered_psth = Spikesfiltered1(ntrials+1,:)./ntrials;% This contain the gaussian filtered spike pattern calculated with all trials.
+    JackKnifeSpikefiltered = Spikesfiltered1(1:ntrials,:)./(ntrials-1);% This contain the ntrials gaussian filtered spike patterns calculated with ntrials-1 trials.
+% each trial is convolved with time varying gaussians and trials are averaged after convolution to obtain the PSTH
+    [Spikesfiltered,~, HwidthSpikes] = gauss_filter_varying_window(Spike_array,alpha_param, ones(size(Spike_array,1),1),Fig);
+    
+
 if Fig
-    figure(5)
-    subplot(1,2,1)
+    figure(6)
+    subplot(2,2,1)
+    plot(GaussFiltered_psth,'LineWidth',2, 'Color','g')
+    hold on
+    for jj=1:ntrials
+        plot(JackKnifeSpikefiltered(jj,:), 'Color','k')
+        hold on
+        if jj==1
+            plot(mean(JackKnifeSpikefiltered,1), 'LineWidth',2,'Color','r')%this is just for the legend
+            hold on
+            legend('Actual spike rate','individual jackknife', 'Average jackknife spike rate')
+        end
+    end
+    plot(mean(JackKnifeSpikefiltered,1), 'LineWidth',2,'Color','r')
+    hold off
+    xlabel('Time bins')
+    ylabel('Gaussian filtered spike patterns')
+    
+    subplot(2,2,3)
     plot(GaussFiltered_psth,'LineWidth',2, 'Color','g')
     hold on
     for jj=1:ntrials
@@ -71,7 +85,7 @@ if Fig
         if jj==1
             plot(mean(Spikesfiltered,1), 'LineWidth',2,'Color','r')%this is just for the legend
             hold on
-            legend('Actual spike rate','individual jackknife', 'Average jackknife spike rate')
+            legend('Actual spike rate','individual trial', 'Average trial spike rate')
         end
     end
     plot(mean(Spikesfiltered,1), 'LineWidth',2,'Color','r')
@@ -83,12 +97,30 @@ end
 if (ntimebins/response_samprate)<Win
     GaussFiltered_psth=[GaussFiltered_psth repmat(spike_rate_bg/response_samprate,1,Resdur-ntimebins)]; 
     Spikesfiltered = [Spikesfiltered repmat(spike_rate_bg/response_samprate,ntrials,Resdur-ntimebins)];
+    JackKnifeSpikefiltered = [JackKnifeSpikefiltered repmat(spike_rate_bg/response_samprate,ntrials,Resdur-ntimebins)];
 elseif (ntimebins/response_samprate)>Win
     fprintf(1,'Warning length of psth = %d ms, larger than %d ms\n', ntimebins, Resdur);
 end
 if Fig
-    figure(5)
-    subplot(1,2,2)
+    figure(6)
+    subplot(2,2,2)
+    plot(GaussFiltered_psth,'LineWidth',2, 'Color','g')
+    hold on
+    for jj=1:ntrials
+        plot(JackKnifeSpikefiltered(jj,:), 'Color','k')
+        hold on
+        if jj==1
+            plot(mean(JackKnifeSpikefiltered,1), 'LineWidth',2,'Color','r')%this is just for the legend
+            hold on
+            legend('Actual spike rate','individual jackknife', 'Average jackknife spike rate')
+        end
+    end
+    plot(mean(JackKnifeSpikefiltered,1), 'LineWidth',2,'Color','r')
+    hold off
+    xlabel('Time bins')
+    ylabel('Gaussian filtered spike patterns')
+    
+    subplot(2,2,4)
     plot(GaussFiltered_psth,'LineWidth',2, 'Color','g')
     hold on
     for jj=1:ntrials
@@ -97,7 +129,7 @@ if Fig
         if jj==1
             plot(mean(Spikesfiltered,1), 'LineWidth',2,'Color','r')%this is just for the legend
             hold on
-            legend('Actual spike rate','individual jackknife', 'Average jackknife spike rate')
+            legend('Actual spike rate','individual trial', 'Average trial spike rate')
         end
     end
     plot(mean(Spikesfiltered,1), 'LineWidth',2,'Color','r')

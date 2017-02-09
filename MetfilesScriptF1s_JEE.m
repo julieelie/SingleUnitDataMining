@@ -59,10 +59,10 @@ for ss=1:length(Subjects)
             %Make sure the file does not already exists
             FE=0;
             for mm = 1:LM
-                if strcmp(h5name(1:(end-3)), matfiles(mm).name(10:(end-4)));
+                if strcmp(h5name(1:(end-3)), matfiles(mm).name(10:(end-4)))
                     fprintf('%s has already a Matfile\n', h5file);
                     if OW==0
-                        FE=1;%switch to file exist only if OverWriting is requested
+                        FE=1;%switch to file exist only if OverWriting is not requested
                     end
                     ExistingFiles=ExistingFiles+1;
                 end
