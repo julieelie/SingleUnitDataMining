@@ -21,6 +21,11 @@ end
 
 input_dir=pwd;
 output_dir='/auto/tdrive/julie/k6/julie/matfile';
+
+
+load('/auto/tdrive/julie/NeuralData/SemanticGLMModel/FanoFactor_CoherenceOptPSTHBin_SemCell.mat','List_SemanticCellspath');
+NB_SC=length(List_SemanticCellspath);
+
 Subjects = dir(input_dir);
 ExistingFiles=0;
 
@@ -42,7 +47,7 @@ for ss=1:length(Subjects)
                 SS_Ind(ff)=1;
             end
         end
-        if strcmp(UT, 'SS')
+        if strcmp(UT, 'SS') || strcmp(UT,'SC')
             Indices=find(SS_Ind);
         elseif strcmp(UT, 'S')
             Indices=find(~SS_Ind);
@@ -67,7 +72,20 @@ for ss=1:length(Subjects)
                     ExistingFiles=ExistingFiles+1;
                 end
             end
-            if FE==0
+            
+            % Check if the cell is a semantic cell
+            if strcmp(UT, 'SC')
+                SemCell = 0;
+                for kk=1:NB_SC
+                    [P,TheFile,ext]=fileparts(List_SemanticCellspath{kk});
+                    if strcmp(h5name(1:(end-3)), TheFile(9:end))
+                        SemCell = 1;
+                    end
+                end
+            else
+                SemCell = 1;
+            end
+            if FE==0 && SemCell
                 fprintf('Calculating Matfile of %s\n', h5file);
                 Matfile_construct_F1s_JEE(h5file,OldWav);
                 fprintf('done\n');
