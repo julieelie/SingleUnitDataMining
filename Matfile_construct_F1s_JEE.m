@@ -1,7 +1,7 @@
 function [filename]=Matfile_construct_F1s_JEE(h5Path, OldWav, pl)
 %% This function cut tdt stim to isolate the begining of the stimulus which
 ...might contains several vocalizations in the first second
-
+    
 if nargin<2
     OldWav=[]; %If you don't have access to the name of the wave in the vocalization banck, don't try to look for them
 end
@@ -12,7 +12,7 @@ end
 
 %%  I choose 1000 ms as a window to cut the voc of each stim
 ... to values obtain with soundduration_invest.m
-Win=1;
+    Win=1;
 Response_samprate=10000;%I choose to analyse the spike patterns with a 10kHz resolution
 
 %% Read input data from data base
@@ -55,7 +55,7 @@ if classId ~= 0
     [pathh5, nameh5, ~]=fileparts(h5Path);
     Res.subject=pathh5(end-10:end);
     Res.Site=nameh5;
-
+    
     % prepare cell arrays
     VocType=cell(nfiles,1);
     TDT_wavfiles=cell(nfiles,1);
@@ -69,15 +69,17 @@ if classId ~= 0
     Erelated=cell(nfiles,1);
     Trials=cell(nfiles,1);
     JackKnife_GaussFiltered = cell(nfiles,1);
-    JKinput_Trialsfiltered = cell(nfiles,1);
+    %JKinput_Trialsfiltered = cell(nfiles,1);
     Trials_GaussFiltered=cell(nfiles,1);
     PSTH=cell(nfiles,1);
     PSTH_GaussFiltered=cell(nfiles,1);
+    Kth_Neigh = cell(nfiles,1);
+    Kth_Neigh_JK = cell(nfiles,1);
     HwidthSpikes = cell(nfiles,1);
     Rate_BG=nan(nfiles,1);
     Spectro=cell(nfiles,1);
     
-
+    
     for isound = 1:nfiles
         fprintf(1,'sound %d/%d\n',isound, nfiles);
         response=responses{isound};
@@ -93,7 +95,7 @@ if classId ~= 0
         else
             VocType{isound}=response.stim_type; %song or ml noise
         end
-    
+        
         % Read the stim wave files on the cluster or on a local mac machine.
         if ismac()
             [~, username] = system('who am i');
@@ -162,7 +164,7 @@ if classId ~= 0
             Rates(it) = response.trials{it}.bg_rate;
         end
         Rate_BG(isound) = mean(Rates);
-                    
+        
         %% calculate and store spectro
         % Parameters for the Spectrogram
         nstd = 6;
@@ -180,11 +182,24 @@ if classId ~= 0
         Spectro{isound}=reshape(abs(s),1,F*D);
         Spectroto= to;
         Spectrofo= fo;
-
+        
         %% Isolate spikes that relate to the section and...
         ...calculate average (psth) for this section.
-        [Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},JKinput_Trialsfiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate, pl);
+        ntrials = length(response.trials);
+        if (ntrials/2)==fix(ntrials/2)
+            Kth_Neigh{isound} =  1:1:(ntrials/2); 
+        else
+            Kth_Neigh{isound} =  [1:1:(ntrials/2) ntrials/2]; 
+        end
         
+        if ((ntrials-1)/2)==fix((ntrials-1)/2)
+            Kth_Neigh_JK{isound} =  1:1:((ntrials-1)/2); 
+        else
+            Kth_Neigh_JK{isound} =  [1:1:((ntrials-1)/2) (ntrials-1)/2]; 
+        end
+        %[Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},JKinput_Trialsfiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh, pl);
+        [Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh{isound}, Kth_Neigh_JK{isound}, pl);
+    
         %% Plot sound pressure waveform, spectrogram and psth isolated
         if pl>0
             figure(5)
@@ -193,16 +208,16 @@ if classId ~= 0
             DBNOISE = 40;
             logB = 20*log10(abs(s));
             maxB = max(max(logB));
-            minB = maxB-DBNOISE;            
+            minB = maxB-DBNOISE;
             imagesc(to,fo,logB);          % to is in seconds
             axis xy;
             caxis('manual');
-            caxis([minB maxB]); 
+            caxis([minB maxB]);
             v_axis(1) = 0;
             v_axis(2) = Win;
-            v_axis(3)= 0; 
+            v_axis(3)= 0;
             v_axis(4)= 12000;
-            axis(v_axis);                                
+            axis(v_axis);
             ylabel('Frequency kHz');
             xlabel('Time (s)');
             cmap = spec_cmap();
@@ -210,8 +225,8 @@ if classId ~= 0
 
             subplot(3,1,2);
             cla;
-%             wind1 = hanning(31)/sum(hanning(31));   % 31 ms smoothing
-%             smpsth = conv(psth,wind1);
+            %             wind1 = hanning(31)/sum(hanning(31));   % 31 ms smoothing
+            %             smpsth = conv(psth,wind1);
             plot(1:length(PSTH{isound}),PSTH{isound}*1000, '-b');
             hold on
             plot(1:length(PSTH_GaussFiltered{isound}),PSTH_GaussFiltered{isound}*1000,'-r');
@@ -227,7 +242,7 @@ if classId ~= 0
             plot(wave)
             pause(1)
         end
-        
+
         %% Store other infos on section
         TDT_wavfiles{isound}=response.tdt_wavfile;
         Original_wavfiles{isound}=response.original_wavfile;
@@ -246,8 +261,7 @@ if classId ~= 0
                 VocBank_Wavfiles{isound}=OldWav{VocBank_idx, 3};
             end
         end
-
-  
+    
     end
     
     if pl>0
@@ -257,7 +271,7 @@ if classId ~= 0
         ylabel('spike rate spike/ms')
         title('Gaussian filtered spike rates of all the stimuli')
     end
-        
+    
     
     Res.VocType=VocType; % this is the type of vocalization (e.g. distance call DC, Nest call Ne, Aggressive call Ag...)
     Res.VocBank_wavfiles=VocBank_Wavfiles; % name of the wav file of the vocalization bank to which this section responded
@@ -271,7 +285,7 @@ if classId ~= 0
     Res.Erelated=Erelated; % Relation of the emitter to the subject (familiar, unfamiliar, self)
     Res.Trials=Trials; % Contains the spike arrival times in ms from the begining of the section and not in ms from the begining of the stim as in h5 files!!!
     Res.JackKnife_GaussFiltered = JackKnife_GaussFiltered;% Contains the spike rate of the ntrials JackKnifes sampled at Response_samprate from the begining of the section
-    Res.JKinput_Trialsfiltered = JKinput_Trialsfiltered;% Contains the spike rate of the ntrials convolved with time varying width estimated with the Jackknife estimated sampled at Response_samprate from the begining of the section
+    %Res.JKinput_Trialsfiltered = JKinput_Trialsfiltered;% Contains the spike rate of the ntrials convolved with time varying width estimated with the Jackknife estimated sampled at Response_samprate from the begining of the section
     Res.Trials_GaussFiltered = Trials_GaussFiltered;
     Res.Response_samprate = Response_samprate; % Sampling rate of the neural responses in Hz
     Res.PSTH=PSTH;
@@ -279,18 +293,20 @@ if classId ~= 0
     Res.Spectroto=Spectroto;
     Res.Spectrofo=Spectrofo;
     Res.PSTH_GaussFiltered=PSTH_GaussFiltered;% Contains the spike rate (Gaussian filtered) calculated with all trials and sampled at Response_samprate from the begining of the section
+    Res.Kth_Neigh = Kth_Neigh;
+    Res.Kth_Neigh_JK = Kth_Neigh_JK;
     Res.HwidthSpikes = HwidthSpikes;
-
+    
     if ismac()
-            [~, username] = system('who am i');
-            if strcmp(strtok(username), 'frederictheunissen')
-                if strncmp('/auto/fdata/solveig',stim_name, 19)
-                elseif strncmp('/auto/fdata/julie',stim_name, 17)
-                    filename = fullfile('/Users','frederictheunissen','Documents','Data','Julie','matfile',Res.subject,['FirstVoc1s_' Res.Site '.mat']);
-                end
-            elseif strcmp(strtok(username), 'elie')
-                filename = fullfile('/Users','elie','Documents','CODE','data','matfile','FirstVoc1sMat',['FirstVoc1s_' Res.Site '.mat']);
+        [~, username] = system('who am i');
+        if strcmp(strtok(username), 'frederictheunissen')
+            if strncmp('/auto/fdata/solveig',stim_name, 19)
+            elseif strncmp('/auto/fdata/julie',stim_name, 17)
+                filename = fullfile('/Users','frederictheunissen','Documents','Data','Julie','matfile',Res.subject,['FirstVoc1s_' Res.Site '.mat']);
             end
+        elseif strcmp(strtok(username), 'elie')
+            filename = fullfile('/Users','elie','Documents','CODE','data','matfile','FirstVoc1sMat',['FirstVoc1s_' Res.Site '.mat']);
+        end
     else
         filename=fullfile('/auto','tdrive','julie','k6','julie','matfile',Res.subject,['FirstVoc1s_' Res.Site '.mat']);
     end
@@ -306,4 +322,3 @@ else
     clear duration unit pthreshold
 end
 end
-    
