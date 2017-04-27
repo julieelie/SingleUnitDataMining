@@ -3,11 +3,11 @@ addpath(genpath('/auto/fhome/julie/Code/tlab/src'));
 addpath(genpath('/auto/fhome/julie/Code/SingleUnitDataMining'));
 rmpath(genpath('/auto/fhome/julie/Code/tlab/src/hedi'));
 addpath(genpath('/auto/fhome/julie/Code/'));
-addpath(genpath('/auto/k5/matlab714/toolbox/stats/stats'));
 %cd /auto/fdata/julie/h5
-cd /auto/k6/julie/h5
+cd /auto/tdrive/julie/k6/julie/h5
 
-%UT is the unit Type can be 'S', 'SS' or 'ALL'
+%UT is the unit Type can be 'S' (non spike sorted), 'SS' (spike sorted),
+%'SC' (for semantic cells) or 'ALL' (all h5 files)
 %OW is the overwriting switch can be 1 (matfiles of units that were already
 %processed will be overwritten) or 0
 
@@ -77,7 +77,7 @@ for ss=1:length(Subjects)
             if strcmp(UT, 'SC')
                 SemCell = 0;
                 for kk=1:NB_SC
-                    [P,TheFile,ext]=fileparts(List_SemanticCellspath{kk});
+                    [~,TheFile,~]=fileparts(List_SemanticCellspath{kk});
                     if strcmp(h5name(1:(end-3)), TheFile(9:end))
                         SemCell = 1;
                     end

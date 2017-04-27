@@ -69,13 +69,13 @@ if classId ~= 0
     Erelated=cell(nfiles,1);
     Trials=cell(nfiles,1);
     JackKnife_GaussFiltered = cell(nfiles,1);
-    %JKinput_Trialsfiltered = cell(nfiles,1);
-    Trials_GaussFiltered=cell(nfiles,1);
+%    JKinput_Trialsfiltered = cell(nfiles,1);
+%    Trials_GaussFiltered=cell(nfiles,1);
     PSTH=cell(nfiles,1);
     PSTH_GaussFiltered=cell(nfiles,1);
     Kth_Neigh = cell(nfiles,1);
     Kth_Neigh_JK = cell(nfiles,1);
-    HwidthSpikes = cell(nfiles,1);
+%    HwidthSpikes = cell(nfiles,1);
     Rate_BG=nan(nfiles,1);
     Spectro=cell(nfiles,1);
     
@@ -186,20 +186,23 @@ if classId ~= 0
         %% Isolate spikes that relate to the section and...
         ...calculate average (psth) for this section.
         ntrials = length(response.trials);
-        if (ntrials/2)==fix(ntrials/2)
-            Kth_Neigh{isound} =  1:1:(ntrials/2); 
-        else
-            Kth_Neigh{isound} =  [1:1:(ntrials/2) ntrials/2]; 
-        end
-        
-        if ((ntrials-1)/2)==fix((ntrials-1)/2)
-            Kth_Neigh_JK{isound} =  1:1:((ntrials-1)/2); 
-        else
-            Kth_Neigh_JK{isound} =  [1:1:((ntrials-1)/2) (ntrials-1)/2]; 
-        end
-        %[Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},JKinput_Trialsfiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh, pl);
-        [Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh{isound}, Kth_Neigh_JK{isound}, pl);
-    
+% The following code was investigating the effect of various degree of nearest neighbor     
+%         if (ntrials/2)==fix(ntrials/2)
+%             Kth_Neigh{isound} =  1:1:(ntrials/2); 
+%         else
+%             Kth_Neigh{isound} =  [1:1:(ntrials/2) ntrials/2]; 
+%         end
+%         
+%         if ((ntrials-1)/2)==fix((ntrials-1)/2)
+%             Kth_Neigh_JK{isound} =  1:1:((ntrials-1)/2); 
+%         else
+%             Kth_Neigh_JK{isound} =  [1:1:((ntrials-1)/2) (ntrials-1)/2]; 
+%         end
+        Kth_Neigh{isound} =  ntrials/3;
+        Kth_Neigh_JK{isound} = (ntrials-1)/3;
+%        [Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},JKinput_Trialsfiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh, pl);
+%        [Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh{isound}, Kth_Neigh_JK{isound}, pl);
+        [Trials{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},~,~,~] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh{isound}, Kth_Neigh_JK{isound}, pl);
         %% Plot sound pressure waveform, spectrogram and psth isolated
         if pl>0
             figure(5)
@@ -285,8 +288,8 @@ if classId ~= 0
     Res.Erelated=Erelated; % Relation of the emitter to the subject (familiar, unfamiliar, self)
     Res.Trials=Trials; % Contains the spike arrival times in ms from the begining of the section and not in ms from the begining of the stim as in h5 files!!!
     Res.JackKnife_GaussFiltered = JackKnife_GaussFiltered;% Contains the spike rate of the ntrials JackKnifes sampled at Response_samprate from the begining of the section
-    %Res.JKinput_Trialsfiltered = JKinput_Trialsfiltered;% Contains the spike rate of the ntrials convolved with time varying width estimated with the Jackknife estimated sampled at Response_samprate from the begining of the section
-    Res.Trials_GaussFiltered = Trials_GaussFiltered;
+%    Res.JKinput_Trialsfiltered = JKinput_Trialsfiltered;% Contains the spike rate of the ntrials convolved with time varying width estimated with the Jackknife estimated sampled at Response_samprate from the begining of the section
+%    Res.Trials_GaussFiltered = Trials_GaussFiltered;
     Res.Response_samprate = Response_samprate; % Sampling rate of the neural responses in Hz
     Res.PSTH=PSTH;
     Res.Spectro=Spectro;
@@ -295,7 +298,7 @@ if classId ~= 0
     Res.PSTH_GaussFiltered=PSTH_GaussFiltered;% Contains the spike rate (Gaussian filtered) calculated with all trials and sampled at Response_samprate from the begining of the section
     Res.Kth_Neigh = Kth_Neigh;
     Res.Kth_Neigh_JK = Kth_Neigh_JK;
-    Res.HwidthSpikes = HwidthSpikes;
+%    Res.HwidthSpikes = HwidthSpikes;
     
     if ismac()
         [~, username] = system('who am i');
