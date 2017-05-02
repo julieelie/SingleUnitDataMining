@@ -187,19 +187,11 @@ if classId ~= 0
         ...calculate average (psth) for this section.
         ntrials = length(response.trials);
 % The following code was investigating the effect of various degree of nearest neighbor     
-%         if (ntrials/2)==fix(ntrials/2)
-%             Kth_Neigh{isound} =  1:1:(ntrials/2); 
-%         else
-%             Kth_Neigh{isound} =  [1:1:(ntrials/2) ntrials/2]; 
-%         end
-%         
-%         if ((ntrials-1)/2)==fix((ntrials-1)/2)
-%             Kth_Neigh_JK{isound} =  1:1:((ntrials-1)/2); 
-%         else
-%             Kth_Neigh_JK{isound} =  [1:1:((ntrials-1)/2) (ntrials-1)/2]; 
-%         end
-        Kth_Neigh{isound} =  ntrials/3;
-        Kth_Neigh_JK{isound} = (ntrials-1)/3;
+        Kth_Neigh{isound} =  ntrials * flip((1:ntrials).^-1); 
+        Kth_Neigh_JK{isound} =  (ntrials-1) * flip((1:(ntrials-1)).^-1); 
+        
+%         Kth_Neigh{isound} =  ntrials/3;
+%         Kth_Neigh_JK{isound} = (ntrials-1)/3;
 %        [Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},JKinput_Trialsfiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh, pl);
 %        [Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh{isound}, Kth_Neigh_JK{isound}, pl);
         [Trials{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},~,~,~] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh{isound}, Kth_Neigh_JK{isound}, pl);
