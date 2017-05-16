@@ -133,6 +133,7 @@ if Fig
     plot(W, C,'Color', 'r', 'LineWidth', 2);
     xlabel('Kernel Width (# points)');
     ylabel('Cost function');
+    pause(2);
 end
 
 %% elongate the smoothed psth vector if the section was shorter than Windur ms
@@ -153,6 +154,7 @@ if (Ntimebins/Response_samprate)<Win
         hold off
         xlabel('Time (ms)')
         ylabel('Kernel density estimates of spike pattern')
+        pause(1);
     end
 elseif (Ntimebins/Response_samprate)>Win
     error('WARNING line 157 length of psth = %d ms, larger than the expected response size of %d ms\n', Ntimebins, Resdur);

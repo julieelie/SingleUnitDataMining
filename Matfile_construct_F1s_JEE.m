@@ -6,7 +6,7 @@ if nargin<2
     OldWav=[]; %If you don't have access to the name of the wave in the vocalization banck, don't try to look for them
 end
 if nargin<3
-    pl=1; %set to 0 for no graph; 1 if you want to see final results per stim; 2 if you to see both steps graph
+    pl=0; %set to 0 for no graph; 1 if you want to see final results per stim; 2 if you to see both steps graph
 end
 
 
