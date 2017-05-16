@@ -86,7 +86,7 @@ if classId ~= 0
     Samprate = nan(nfiles,1);
     
     
-    for isound = 1:nfiles
+    parfor isound = 1:nfiles
         fprintf(1,'sound %d/%d\n',isound, nfiles);
         response=responses{isound};
         stim_name=response.tdt_wavfile;
