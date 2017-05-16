@@ -1,4 +1,4 @@
-function [Section_Trials,Psth,GaussFiltered_psth_all, JKSpikesfiltered_all, Stim_mean_rate, Spike_std_rate, Spike_rate_stim] = spikeTimes_psth_gaussfilter_cal(begInd, endInd, stim_samprate,response,spike_rate_bg, Win,response_samprate, Kth_Neigh_PSTH, Kth_Neigh_PSTH_JK, Fig)
+function [Section_Trials,Psth,GaussFiltered_psth_all, JKSpikesfiltered_all, PSTH_HwidthSpikes, JKHwidthSpikes_all, Stim_mean_rate, Spike_std_rate, Spike_rate_stim] = spikeTimes_psth_gaussfilter_cal(begInd, endInd, stim_samprate,response,spike_rate_bg, Win,response_samprate, Kth_Neigh_PSTH, Kth_Neigh_PSTH_JK, Fig)
 % If calculating again gaussian filtered spike patterns with a width fixed by the JK output, re-instaure:
 %function [Section_Trials,Spikesfiltered,Psth,GaussFiltered_psth_all, JackKnifeSpikefiltered,JKinputSpikesfiltered, Stim_mean_rate, Spike_std_rate, Spike_rate_stim, HwidthSpikes] = spikeTimes_psth_gaussfilter_cal(begInd, endInd, stim_samprate,response,spike_rate_bg, Win,response_samprate, Kth_Neigh_PSTH, Fig)
 % If calculating again gaussian filtered spike patterns with a width
@@ -64,10 +64,19 @@ for it = 1:ntrials
 end
 % calculate the Jackknife spike patterns
 JKSpikesfiltered_all = cell(length(Kth_Neigh_PSTH_JK),1);
+JKHwidthSpikes_all = cell(length(Kth_Neigh_PSTH_JK),1);
 for kk=1:length(Kth_Neigh_PSTH_JK)
-    [JKSpikesfiltered,~, JKHwidthSpikes] = gauss_filter_varying_window(Spike_array_JK,alpha_param, repmat(Kth_Neigh_PSTH_JK(kk),ntrials,1), Fig);
+    [JKSpikesfiltered,JKHwidthSpikes] = gauss_filter_varying_window(Spike_array_JK,alpha_param, repmat(Kth_Neigh_PSTH_JK(kk),ntrials,1), Fig);
     JackKnifeSpikefiltered = JKSpikesfiltered./(ntrials-1);% This contain the ntrials gaussian filtered spike patterns calculated with ntrials-1 trials.
     JKSpikesfiltered_all{kk} = JackKnifeSpikefiltered;
+    
+    % Translating the structure output of spike width to a matrix
+    JKHwidthSpikes_all{kk} = nan(size(JackKnifeSpikefiltered));
+    for ss=1:length(JKHwidthSpikes.trial)
+        RowId = JKHwidthSpikes.trial(ss);
+        ColId = JKHwidthSpikes.timebin(ss);
+        JKHwidthSpikes_all{kk}(RowId, ColId) = JKHwidthSpikes.halfwidth(ss);
+    end
 end
 JKHwidthSpikes.alpha_param = alpha_param;
 
@@ -81,9 +90,20 @@ JKHwidthSpikes.alpha_param = alpha_param;
 
 % Calculate the gaussian filtered PSTH
 GaussFiltered_psth_all = nan(length(Kth_Neigh_PSTH),size(Spike_array,2));
+PSTH_HwidthSpikes = nan(size(GaussFiltered_psth_all));
 for kk=1:length(Kth_Neigh_PSTH)
-    [PSTHSpikesfiltered,~, ~] = gauss_filter_varying_window(sum(Spike_array,1),alpha_param, Kth_Neigh_PSTH(kk), Fig);
+    [PSTHSpikesfiltered, Hwidth] = gauss_filter_varying_window(sum(Spike_array,1),alpha_param, Kth_Neigh_PSTH(kk), Fig);
     GaussFiltered_psth_all(kk,:) = PSTHSpikesfiltered./ntrials;% This contain the gaussian filtered spike pattern calculated with all trials.
+    
+    % Translating the structure output of spike width to a vector
+    for ss=1:length(Hwidth.trial)
+        RowId = Hwidth.trial(ss);
+        if RowId~=1
+            error('RowId should be 1 since the PSTH is a vector and it is %d\n', RowId)
+        end
+        ColId = Hwidth.timebin(ss);
+        PSTH_HwidthSpikes(kk, ColId) = Hwidth.halfwidth(ss);
+    end
 end
 
 

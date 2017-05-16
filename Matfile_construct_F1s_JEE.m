@@ -6,14 +6,14 @@ if nargin<2
     OldWav=[]; %If you don't have access to the name of the wave in the vocalization banck, don't try to look for them
 end
 if nargin<3
-    pl=0; %set to 0 for no graph; 1 if you want to see final results per stim; 2 if you to see both steps graph
+    pl=1; %set to 0 for no graph; 1 if you want to see final results per stim; 2 if you to see both steps graph
 end
 
 
 %%  I choose 1000 ms as a window to cut the voc of each stim
 ... to values obtain with soundduration_invest.m
     Win=1;
-Response_samprate=10000;%I choose to analyse the spike patterns with a 10kHz resolution
+Response_samprate=1000;%I choose to analyse the spike patterns with a 1kHz resolution
 
 %% Read input data from data base
 unit = read_unit_h5file(h5Path, 'r');
@@ -68,16 +68,22 @@ if classId ~= 0
     Eage=cell(nfiles,1);
     Erelated=cell(nfiles,1);
     Trials=cell(nfiles,1);
-    JackKnife_GaussFiltered = cell(nfiles,1);
+    JackKnife_KDE_Filtered = cell(nfiles,1);
 %    JKinput_Trialsfiltered = cell(nfiles,1);
 %    Trials_GaussFiltered=cell(nfiles,1);
     PSTH=cell(nfiles,1);
-    PSTH_GaussFiltered=cell(nfiles,1);
-    Kth_Neigh = cell(nfiles,1);
-    Kth_Neigh_JK = cell(nfiles,1);
-%    HwidthSpikes = cell(nfiles,1);
+    PSTH_KDE_Filtered=cell(nfiles,1);
+    Spike_array = cell(nfiles,1);
+%     Kth_Neigh = cell(nfiles,1);
+%     Kth_Neigh_JK = cell(nfiles,1);
+%     HwidthSpikes_PSTH = cell(nfiles,1);
+%     HwidthSpikes_JK = cell(nfiles,1);
     Rate_BG=nan(nfiles,1);
     Spectro=cell(nfiles,1);
+    Spectroto = cell(nfiles,1);
+    Spectrofo = cell(nfiles,1);
+    Ntrials = nan(nfiles,1);
+    Samprate = nan(nfiles,1);
     
     
     for isound = 1:nfiles
@@ -115,27 +121,27 @@ if classId ~= 0
         else
             stim_name = ['/auto/tdrive/' stim_name(strfind(stim_name,'fdata'):end)];
         end
-        [sound_in, samprate] = audioread(stim_name);
+        [sound_in, Samprate(isound)] = audioread(stim_name);
         if pl>0
             fprintf(1,'Plot the sound isolated and the neural response\n');
             on=ones(size(sound_in));
-            if length(sound_in)>Win*samprate
-                on(Win*samprate+1 :end)=0;%Only keep the first response
+            if length(sound_in)>Win*Samprate(isound)
+                on(Win*Samprate(isound)+1 :end)=0;%Only keep the first response
             end
             on=on*0.8;
-            plot_sound_spike_selection_h5(response, sound_in, samprate, on);
+            plot_sound_spike_selection_h5(response, sound_in, Samprate(isound), on);
             pause(1);
         end
         
         % Save the wave file and wave indices
-        if length(sound_in)<Win*samprate
+        if length(sound_in)<Win*Samprate(isound)
             EndIndex_sound = length(sound_in);
         else
-            EndIndex_sound=Win*samprate;
+            EndIndex_sound=Win*Samprate(isound);
         end
         WavIndices{isound} = [1; EndIndex_sound];
         SectionWave{isound} = sound_in(WavIndices{isound}(1): WavIndices{isound}(2));
-        SectionLength(isound) = length(SectionWave{isound})/samprate*1000;
+        SectionLength(isound) = length(SectionWave{isound})/Samprate(isound)*1000;
         
         %Determine if there is enough background response after the end of
         %stim to complete the neural response up to Win ms
@@ -148,9 +154,9 @@ if classId ~= 0
             end
             post_response_time=min(post_response_time);
             if post_response_time>=Time_needed
-                EndIndex = EndIndex_sound + Time_needed*samprate;
+                EndIndex = EndIndex_sound + Time_needed*Samprate(isound);
             else
-                EndIndex = EndIndex_sound + post_response_time*samprate;
+                EndIndex = EndIndex_sound + post_response_time*Samprate(isound);
             end
         else
             EndIndex = EndIndex_sound;
@@ -170,35 +176,68 @@ if classId ~= 0
         nstd = 6;
         fband = 50;
         twindow = 1000*nstd/(fband*2.0*pi);           % Window length in ms - 6 times the standard dev of the gaussian window
-        winLength = fix(twindow*samprate/1000.0);  % Window length in number of points
+        winLength = fix(twindow*Samprate(isound)/1000.0);  % Window length in number of points
         winLength = fix(winLength/2)*2;            % Enforce even window length
-        increment = fix(0.001*samprate);           % Sampling rate of spectrogram in number of points - set at 1 kHz
+        increment = fix(0.001*Samprate(isound));           % Sampling rate of spectrogram in number of points - set at 1 kHz
         %calculate spectro
-        [s, to, fo, ~] = GaussianSpectrum(SectionWave{isound}, increment, winLength, samprate);
+        [s, to, fo, ~] = GaussianSpectrum(SectionWave{isound}, increment, winLength, Samprate(isound));
         
         %reshape and store spectro
         D=length(to);
         F=length(fo);
         Spectro{isound}=reshape(abs(s),1,F*D);
-        Spectroto= to;
-        Spectrofo= fo;
+        Spectroto{isound}= to;
+        Spectrofo{isound}= fo;
         
         %% Isolate spikes that relate to the section and...
         ...calculate average (psth) for this section.
-        ntrials = length(response.trials);
+        Ntrials(isound) = length(response.trials);
 % The following code was investigating the effect of various degree of nearest neighbor     
-        Kth_Neigh{isound} =  ntrials * flip((1:ntrials).^-1); 
-        Kth_Neigh_JK{isound} =  (ntrials-1) * flip((1:(ntrials-1)).^-1); 
+%        Kth_Neigh{isound} =  Ntrials(isound) * flip((1:Ntrials(isound)).^-1); 
+%        Kth_Neigh_JK{isound} =  (Ntrials(isound)-1) * flip((1:(Ntrials(isound)-1)).^-1); 
         
-%         Kth_Neigh{isound} =  ntrials/3;
-%         Kth_Neigh_JK{isound} = (ntrials-1)/3;
-%        [Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},JKinput_Trialsfiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh, pl);
-%        [Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh{isound}, Kth_Neigh_JK{isound}, pl);
-        [Trials{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},~,~,~] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, samprate,response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh{isound}, Kth_Neigh_JK{isound}, pl);
-        %% Plot sound pressure waveform, spectrogram and psth isolated
-        if pl>0
+%         Kth_Neigh{isound} =  Ntrials(isound)/3;
+%         Kth_Neigh_JK{isound} = (Ntrials(isound)-1)/3;
+%        [Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},JKinput_Trialsfiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, Samprate(isound),response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh, pl);
+%        [Trials{isound},Trials_GaussFiltered{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},~,~,~,HwidthSpikes{isound}] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, Samprate(isound),response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh{isound}, Kth_Neigh_JK{isound}, pl);
+%        [Trials{isound},PSTH{isound},PSTH_GaussFiltered{isound},JackKnife_GaussFiltered{isound},HwidthSpikes_PSTH{isound},HwidthSpikes_JK{isound},~,~,~] = spikeTimes_psth_gaussfilter_cal(1, EndIndex, Samprate(isound),response,Rate_BG(isound), Win,Response_samprate,Kth_Neigh{isound}, Kth_Neigh_JK{isound}, pl);
+        [Trials{isound},PSTH{isound},PSTH_KDE_Filtered{isound},JackKnife_KDE_Filtered{isound},Spike_array{isound},~,~,~] = spikeTimes_psth_KDE_filter_cal(1, EndIndex, Samprate(isound),response,Rate_BG(isound), Win,Response_samprate, pl);
+        
+        %% Store other infos on section
+        TDT_wavfiles{isound}=response.tdt_wavfile;
+        Original_wavfiles{isound}=response.original_wavfile;
+        if strcmp(response.stim_type,'call')
+            ESex{isound}=response.stim_source_sex;
+            Eage{isound}=response.callerAge;
+            Erelated{isound}=response.stim_source;
+            if ~isempty(OldWav)
+                VocBank_Wavfiles{isound}=OldWav{VocBank_idx, 3};
+            end
+        else
+            ESex{isound}='NaN';
+            Eage{isound}='NaN';
+            Erelated{isound}='NaN';
+            if ~isempty(OldWav)
+                VocBank_Wavfiles{isound}=OldWav{VocBank_idx, 3};
+            end
+        end
+    
+    end
+    
+    %% Plots if requested
+    % Plot sound pressure waveform, spectrogram and psth isolated
+        
+    if pl>0
+        for isound=1:nfiles
             figure(5)
-            [s, to, fo, ~] = GaussianSpectrum([SectionWave{isound} ;zeros(Win*samprate-length(SectionWave{isound}),1)], increment, winLength, samprate);
+            % Parameters for the Spectrogram
+        nstd = 6;
+        fband = 50;
+        twindow = 1000*nstd/(fband*2.0*pi);           % Window length in ms - 6 times the standard dev of the gaussian window
+        winLength = fix(twindow*Samprate(isound)/1000.0);  % Window length in number of points
+        winLength = fix(winLength/2)*2;            % Enforce even window length
+        increment = fix(0.001*Samprate(isound));           % Sampling rate of spectrogram in number of points - set at 1 kHz
+            [s, to, fo, ~] = GaussianSpectrum([SectionWave{isound} ;zeros(Win*Samprate(isound)-length(SectionWave{isound}),1)], increment, winLength, Samprate(isound));
             subplot(3,1,1);
             DBNOISE = 40;
             logB = 20*log10(abs(s));
@@ -224,7 +263,7 @@ if classId ~= 0
             %             smpsth = conv(psth,wind1);
             plot(1:length(PSTH{isound}),PSTH{isound}*1000, '-b');
             hold on
-            plot(1:length(PSTH_GaussFiltered{isound}),PSTH_GaussFiltered{isound}*1000,'-r');
+            plot(1:length(PSTH_KDE_Filtered{isound}),PSTH_KDE_Filtered{isound}*1000,'-r');
             legend('PSTH', 'Gaussian filtered PSTH')
             %axis([v_axis(1) v_axis(2) 0 1000*max(smpsth)]);
             ylabel('Rate (spikes/s)');
@@ -233,38 +272,37 @@ if classId ~= 0
 
             subplot(3,1,3)
             cla;
-            wave=[SectionWave{isound} ;zeros(Win*samprate-length(SectionWave{isound}),1)];
+            wave=[SectionWave{isound} ;zeros(Win*Samprate(isound)-length(SectionWave{isound}),1)];
             plot(wave)
             pause(1)
         end
-
-        %% Store other infos on section
-        TDT_wavfiles{isound}=response.tdt_wavfile;
-        Original_wavfiles{isound}=response.original_wavfile;
-        if strcmp(response.stim_type,'call')
-            ESex{isound}=response.stim_source_sex;
-            Eage{isound}=response.callerAge;
-            Erelated{isound}=response.stim_source;
-            if ~isempty(OldWav)
-                VocBank_Wavfiles{isound}=OldWav{VocBank_idx, 3};
-            end
-        else
-            ESex{isound}='NaN';
-            Eage{isound}='NaN';
-            Erelated{isound}='NaN';
-            if ~isempty(OldWav)
-                VocBank_Wavfiles{isound}=OldWav{VocBank_idx, 3};
-            end
-        end
+    end
     
+    %% Get ready indices of unique sets of JK PSTH for subsequent use in Semantic_NeuroInfo_Poisson_savio.m for stims of interests
+    Nb_bootstrap = 100;
+    UCat = {'Ag', 'Be','DC','Di','LT', 'Ne','Te','Th','song'};
+    IndVoc = zeros(nfiles,1);
+    for cc=1:length(UCat)
+        IndVoc = IndVoc + strcmp(VocType, UCat{cc});
+    end
+    GoodVocInd = find(IndVoc);
+    NbGoodVoc = length(GoodVocInd);
+    MinNbTrials = min(Ntrials(GoodVocInd));
+    SetIndices_JK = cell(Nb_bootstrap,1);
+    for bb=1:Nb_bootstrap
+        LocalSet = nan(MinNbTrials, NbGoodVoc);
+        for vv=1:NbGoodVoc
+            LocalSet(:,vv) = randperm(Ntrials(GoodVocInd(vv)),MinNbTrials);
+        end
+        SetIndices_JK{bb} = LocalSet;
     end
     
     if pl>0
         figure(6)
-        plot(cell2mat(PSTH_GaussFiltered)');
+        plot(cell2mat(PSTH_KDE_Filtered)');
         xlabel('Time (ms)')
         ylabel('spike rate spike/ms')
-        title('Gaussian filtered spike rates of all the stimuli')
+        title('KDE filtered spike rates of all the stimuli')
     end
     
     
@@ -279,7 +317,7 @@ if classId ~= 0
     Res.Eage=Eage;  % Age of the emitter of the vocalization
     Res.Erelated=Erelated; % Relation of the emitter to the subject (familiar, unfamiliar, self)
     Res.Trials=Trials; % Contains the spike arrival times in ms from the begining of the section and not in ms from the begining of the stim as in h5 files!!!
-    Res.JackKnife_GaussFiltered = JackKnife_GaussFiltered;% Contains the spike rate of the ntrials JackKnifes sampled at Response_samprate from the begining of the section
+    Res.JackKnife_KDE_Filtered = JackKnife_KDE_Filtered;% Contains the spike rate of the ntrials JackKnifes sampled at Response_samprate from the begining of the section
 %    Res.JKinput_Trialsfiltered = JKinput_Trialsfiltered;% Contains the spike rate of the ntrials convolved with time varying width estimated with the Jackknife estimated sampled at Response_samprate from the begining of the section
 %    Res.Trials_GaussFiltered = Trials_GaussFiltered;
     Res.Response_samprate = Response_samprate; % Sampling rate of the neural responses in Hz
@@ -287,14 +325,18 @@ if classId ~= 0
     Res.Spectro=Spectro;
     Res.Spectroto=Spectroto;
     Res.Spectrofo=Spectrofo;
-    Res.PSTH_GaussFiltered=PSTH_GaussFiltered;% Contains the spike rate (Gaussian filtered) calculated with all trials and sampled at Response_samprate from the begining of the section
-    Res.Kth_Neigh = Kth_Neigh;
-    Res.Kth_Neigh_JK = Kth_Neigh_JK;
-%    Res.HwidthSpikes = HwidthSpikes;
+    Res.PSTH_KDE_Filtered=PSTH_KDE_Filtered;% Contains the spike rate (Gaussian filtered) calculated with all trials and sampled at Response_samprate from the begining of the section
+%    Res.Kth_Neigh = Kth_Neigh;
+%    Res.Kth_Neigh_JK = Kth_Neigh_JK;
+    Res.Spike_array = Spike_array;
+%    Res.HwidthSpikes_PSTH = HwidthSpikes_PSTH;
+%    Res.HwidthSpikes_JK = HwidthSpikes_JK;
+    Res.SetIndices_JK = SetIndices_JK;
     
     if ismac()
         [~, username] = system('who am i');
         if strcmp(strtok(username), 'frederictheunissen')
+            stim_name = responses{1}.tdt_wavfile;
             if strncmp('/auto/fdata/solveig',stim_name, 19)
             elseif strncmp('/auto/fdata/julie',stim_name, 17)
                 filename = fullfile('/Users','frederictheunissen','Documents','Data','Julie','matfile',Res.subject,['FirstVoc1s_' Res.Site '.mat']);
