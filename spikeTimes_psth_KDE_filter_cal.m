@@ -112,7 +112,7 @@ end
 %% Plot figures if requested
 if Fig
     figure(6)
-    subplot(2,1,1)
+    subplot(3,1,1)
     shadedErrorBar(Tin,Psth_KDEfiltered, std(JK_KDEfiltered,1),{'Color', 'k','LineStyle','-', 'LineWidth',1},1)
     hold on
     for tt=1:Ntrials
@@ -128,11 +128,18 @@ if Fig
     
     % visually verify that the optimal kernel width is investigated by the
     % range of value tested
-    subplot(2,1,2)
+    subplot(3,1,2)
     [~,~,~,W,C,~,~] = sskernel(Spike_ArrivalT_AllT,Tin);
     plot(W, C,'Color', 'r', 'LineWidth', 2);
     xlabel('Kernel Width (# points)');
     ylabel('Cost function');
+    YLim = get(gca,'YLim');
+    subplot(3,1,3)
+    plot(W, C,'Color', 'r', 'LineWidth', 2);
+    xlabel('Kernel Width (# points)');
+    ylabel('Cost function');
+    xlim([0 20])
+    ylim([min(YLim) min(YLim)+(max(YLim)-min(YLim))/4])
     pause(2);
 end
 

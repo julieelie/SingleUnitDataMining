@@ -9,6 +9,31 @@ if nargin<3
     pl=0; %set to 0 for no graph; 1 if you want to see final results per stim; 2 if you to see both steps graph
 end
 
+%% Get the environment to figure out on which machine/cluster we are
+fprintf(1,'The environment is: %s\n',getenv('HOSTNAME'))
+
+if ~isempty(strfind(getenv('HOSTNAME'),'ln')) || ~isempty(strfind(getenv('HOSTNAME'),'.savio')) || ~isempty(strfind(getenv('HOSTNAME'),'.brc'))%savio Cluster
+    Savio=1;
+    fprintf(1, 'We are on savio!\n')
+    addpath(genpath('/global/home/users/jelie/CODE/SingleUnitModels'));
+    addpath(genpath('/global/home/users/jelie/CODE/GeneralCode'));
+    addpath(genpath('/global/home/users/jelie/CODE/tlab/src/slurmbot/matlab'));
+    addpath(genpath('/global/home/users/jelie/CODE/tlab/src/h5analysis'));
+elseif ismac()
+    Savio=0;
+    Me = 1;
+    fprintf(1, 'We are on my Mac Book Pro!\n')
+    addpath(genpath('/Users/elie/Documents/CODE/SingleUnitModels'));
+    addpath(genpath('/Users/elie/Documents/CODE/GeneralCode'));
+    addpath(genpath('/Users/elie/Documents/CODE/STRFLab/trunk'));
+else %we are on strfinator or a cluster machine
+    Savio = 0;
+    Me = 0;
+    fprintf(1, 'Hum.. We must be on one of the lab machine\n')
+    addpath(genpath('/auto/fhome/julie/Code/SingleUnitModels'));
+    addpath(genpath('/auto/fhome/julie/Code/GeneralCode'));
+    addpath(genpath('/auto/fhome/julie/Code/strflab'));
+end
 
 %%  I choose 1000 ms as a window to cut the voc of each stim
 ... to values obtain with soundduration_invest.m
@@ -16,7 +41,18 @@ end
 Response_samprate=1000;%I choose to analyse the spike patterns with a 1kHz resolution
 
 %% Read input data from data base
-unit = read_unit_h5file(h5Path, 'r');
+%% Load the unit matfile
+%Res=load('/Users/elie/Documents/MATLAB/data/matfile/GreBlu9508M/ZS_Site2_L1100R1450_21.mat')
+%Res=load('/Users/elie/Documents/MATLAB/data/matfile/WholeVocMat/WholeVoc_Site2_L1100R1450_e21_s0_ss1.mat')
+%Res=load('/Users/elie/Documents/MATLAB/data/matfile/WholeVocMat/WholeVoc_Site2_L2000R1600_e27_s1_ss1.mat')
+if Savio %savio Cluster
+    Dir_local='/global/scratch/jelie/MatFiles/';
+    unit=loadfromTdrive_savio(MatfilePath, Dir_local);
+elseif Me
+    unit = read_unit_h5file(h5Path, 'r');
+else
+    unit = read_unit_h5file(h5Path, 'r');
+end
 
 %% Select the protocol (SelX, Callx, Maskx, STRFx...)
 %number of different protocols run for that unit, identify if the one
@@ -85,7 +121,16 @@ if classId ~= 0
     Ntrials = nan(nfiles,1);
     Samprate = nan(nfiles,1);
     
+    %% Configure Parallel computing
+    if ~isempty(strfind(getenv('HOSTNAME'),'.savio')) || ~isempty(strfind(getenv('HOSTNAME'),'.brc'))
+        MyParPool = parpool(str2num(getenv('SLURM_CPUS_ON_NODE')),'IdleTimeout', Inf);
+        system('mkdir -p /global/scratch/$USER/$SLURM_JOB_ID')
+        [~,JobID] = system('echo $SLURM_JOB_ID');
+        parcluster.JobStorageLocation = ['/global/scratch/jelie/' JobID];
+    end
     
+    %% Loop through stims
+    %parfor
     parfor isound = 1:nfiles
         fprintf(1,'sound %d/%d\n',isound, nfiles);
         response=responses{isound};
@@ -103,25 +148,16 @@ if classId ~= 0
         end
         
         % Read the stim wave files on the cluster or on a local mac machine.
-        if ismac()
-            [~, username] = system('who am i');
-            if strcmp(strtok(username), 'frederictheunissen')
-                if strncmp('/auto/fdata/solveig',stim_name, 19)
-                    stim_name = strcat('/Users/frederictheunissen/Documents/Data/solveig', stim_name(20:end));
-                elseif strncmp('/auto/fdata/julie',stim_name, 17)
-                    stim_name = strcat('/Users/frederictheunissen/Documents/Data/Julie', stim_name(18:end));
-                end
-            elseif strcmp(strtok(username), 'elie')
-                if strncmp('/auto/fdata/solveig',stim_name, 19)
-                    stim_name = strcat('/Users/frederictheunissen/Documents/Data/solveig', stim_name(20:end));
-                elseif strncmp('/auto/fdata/julie',stim_name, 17)
-                    stim_name = strcat('/Users/elie/Documents/CODE/data', stim_name(18:end));
-                end
-            end
+        if Me
+            stim_name = strcat('/Users/elie/Documents/CODE/data', stim_name(18:end));
+        elseif Savio
+            stim_name = ['/global/scratch/jelie/' stim_name(strfind(stim_name,'Stims'):end)];
         else
             stim_name = ['/auto/tdrive/' stim_name(strfind(stim_name,'fdata'):end)];
         end
         [sound_in, Samprate(isound)] = audioread(stim_name);
+        
+        % Plot the sound if asked
         if pl>0
             fprintf(1,'Plot the sound isolated and the neural response\n');
             on=ones(size(sound_in));
@@ -289,7 +325,7 @@ if classId ~= 0
     NbGoodVoc = length(GoodVocInd);
     MinNbTrials = min(Ntrials(GoodVocInd));
     SetIndices_JK = cell(Nb_bootstrap,1);
-    for bb=1:Nb_bootstrap
+    parfor bb=1:Nb_bootstrap
         LocalSet = nan(MinNbTrials, NbGoodVoc);
         for vv=1:NbGoodVoc
             LocalSet(:,vv) = randperm(Ntrials(GoodVocInd(vv)),MinNbTrials);
@@ -305,7 +341,7 @@ if classId ~= 0
         title('KDE filtered spike rates of all the stimuli')
     end
     
-    
+    %% Fill-in output structure
     Res.VocType=VocType; % this is the type of vocalization (e.g. distance call DC, Nest call Ne, Aggressive call Ag...)
     Res.VocBank_wavfiles=VocBank_Wavfiles; % name of the wav file of the vocalization bank to which this section responded
     Res.Original_wavfiles=Original_wavfiles; % The real stim is a combination of 1 or 3 calls or 2.5s song. This is the original name of the wav file JEE constructed with the vocalization from the vocalization bank.
@@ -333,20 +369,18 @@ if classId ~= 0
 %    Res.HwidthSpikes_JK = HwidthSpikes_JK;
     Res.SetIndices_JK = SetIndices_JK;
     
-    if ismac()
-        [~, username] = system('who am i');
-        if strcmp(strtok(username), 'frederictheunissen')
-            stim_name = responses{1}.tdt_wavfile;
-            if strncmp('/auto/fdata/solveig',stim_name, 19)
-            elseif strncmp('/auto/fdata/julie',stim_name, 17)
-                filename = fullfile('/Users','frederictheunissen','Documents','Data','Julie','matfile',Res.subject,['FirstVoc1s_' Res.Site '.mat']);
-            end
-        elseif strcmp(strtok(username), 'elie')
-            filename = fullfile('/Users','elie','Documents','CODE','data','matfile','FirstVoc1sMat',['FirstVoc1s_' Res.Site '.mat']);
-        end
+    %% Get ready saving files and directories
+    %OutputDir_final=fullfile('/auto','tdrive','julie','k6','julie','matfile','ModMatSavio');
+    
+    if Savio
+        OutputDir='/global/scratch/jelie/MatFiles/FirstVoc1sMat';
+    elseif Me
+        OutputDir='/users/elie/Documents/CODE/data/matfile/FirstVoc1sMat';
     else
-        filename=fullfile('/auto','tdrive','julie','k6','julie','matfile',Res.subject,['FirstVoc1s_' Res.Site '.mat']);
+        OutputDir=fullfile('/auto','tdrive','julie','k6','julie','matfile',Res.subject);
     end
+    filename=fullfile(OutputDir,['FirstVoc1s_' Res.Site '.mat']);
+    
     save(filename, '-struct', 'Res','-append');
     fprintf('saved data under: %s\n', filename);
     clear duration Res VocType TDT_wavfiles Cut_orders Original_wavfiles WavIndices SectionWave ESex Eage Erelated Trials PSTH MeanRate StdRate Spectro Section_cat Section_zscore SectionLength Section_tvalue Section_pvalue sections_good_zscores
