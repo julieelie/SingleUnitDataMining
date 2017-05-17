@@ -382,7 +382,7 @@ if classId ~= 0
     end
     filename=fullfile(OutputDir,['FirstVoc1s_' Res.Site '.mat']);
     
-    save(filename, '-struct', 'Res','-append');
+    save(filename, '-struct', 'Res');
     fprintf('saved data under: %s\n', filename);
     clear duration Res VocType TDT_wavfiles Cut_orders Original_wavfiles WavIndices SectionWave ESex Eage Erelated Trials PSTH MeanRate StdRate Spectro Section_cat Section_zscore SectionLength Section_tvalue Section_pvalue sections_good_zscores
 else
