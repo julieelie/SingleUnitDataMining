@@ -378,7 +378,7 @@ if classId ~= 0
     elseif Me
         OutputDir='/users/elie/Documents/CODE/data/matfile/FirstVoc1sMat';
     else
-        OutputDir=fullfile('/auto','tdrive','julie','k6','julie','matfile',Res.subject);
+        OutputDir=fullfile('/auto','tdrive','julie','k6','julie','matfile','FirstVoc1sMat');
     end
     filename=fullfile(OutputDir,['FirstVoc1s_' Res.Site '.mat']);
     
