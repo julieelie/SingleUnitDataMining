@@ -14,6 +14,7 @@ fprintf(1,'The environment is: %s\n',getenv('HOSTNAME'))
 
 if ~isempty(strfind(getenv('HOSTNAME'),'ln')) || ~isempty(strfind(getenv('HOSTNAME'),'.savio')) || ~isempty(strfind(getenv('HOSTNAME'),'.brc'))%savio Cluster
     Savio=1;
+    Me=0;
     fprintf(1, 'We are on savio!\n')
     addpath(genpath('/global/home/users/jelie/CODE/SingleUnitModels'));
     addpath(genpath('/global/home/users/jelie/CODE/GeneralCode'));
@@ -50,7 +51,7 @@ if Savio %savio Cluster
     unit=loadfromTdrive_savio(MatfilePath, Dir_local);
 elseif Me
     unit = read_unit_h5file(h5Path, 'r');
-else
+elseif (~Me && ~Savio)
     unit = read_unit_h5file(h5Path, 'r');
 end
 
