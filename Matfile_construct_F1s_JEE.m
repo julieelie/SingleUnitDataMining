@@ -18,6 +18,7 @@ if ~isempty(strfind(getenv('HOSTNAME'),'ln')) || ~isempty(strfind(getenv('HOSTNA
     fprintf(1, 'We are on savio!\n')
     addpath(genpath('/global/home/users/jelie/CODE/SingleUnitModels'));
     addpath(genpath('/global/home/users/jelie/CODE/GeneralCode'));
+    addpath(genpath('/global/home/users/jelie/CODE/density_estimation'));
     addpath(genpath('/global/home/users/jelie/CODE/tlab/src'));
     addpath(genpath('/global/home/users/jelie/CODE/strflab/trunk'));
 elseif ismac()
@@ -25,15 +26,19 @@ elseif ismac()
     Me = 1;
     fprintf(1, 'We are on my Mac Book Pro!\n')
     addpath(genpath('/Users/elie/Documents/CODE/SingleUnitModels'));
+    addpath(genpath('/Users/elie/Documents/CODE/density_estimation'));
     addpath(genpath('/Users/elie/Documents/CODE/GeneralCode'));
     addpath(genpath('/Users/elie/Documents/CODE/STRFLab/trunk'));
+    addpath(genpath('/Users/elie/Documents/CODE/tlab/src'));
 else %we are on strfinator or a cluster machine
     Savio = 0;
     Me = 0;
     fprintf(1, 'Hum.. We must be on one of the lab machine\n')
     addpath(genpath('/auto/fhome/julie/Code/SingleUnitModels'));
+    addpath(genpath('/auto/fhome/julie/Code/density_estimation'));
     addpath(genpath('/auto/fhome/julie/Code/GeneralCode'));
     addpath(genpath('/auto/fhome/julie/Code/strflab'));
+    addpath(genpath('/auto/fhome/julie/Code/tlab/src'));
 end
 
 %%  I choose 1000 ms as a window to cut the voc of each stim
