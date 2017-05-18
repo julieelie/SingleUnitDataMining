@@ -152,12 +152,17 @@ if classId ~= 0
         % Read the stim wave files on the cluster or on a local mac machine.
         if Me
             stim_name = strcat('/Users/elie/Documents/CODE/data', stim_name(18:end));
+            [sound_in, Samprate(isound)] = audioread(stim_name);
         elseif Savio
             stim_name = ['/global/scratch/jelie/' stim_name(strfind(stim_name,'Stims'):end)];
+            [sound_in, Samprate(isound)] = wavread(stim_name);
         else
             stim_name = ['/auto/tdrive/' stim_name(strfind(stim_name,'fdata'):end)];
+            [sound_in, Samprate(isound)] = audioread(stim_name);
         end
-        [sound_in, Samprate(isound)] = audioread(stim_name);
+        
+        
+        
         
         % Plot the sound if asked
         if pl>0
