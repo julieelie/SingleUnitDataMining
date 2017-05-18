@@ -48,7 +48,8 @@ Response_samprate=1000;%I choose to analyse the spike patterns with a 1kHz resol
 %Res=load('/Users/elie/Documents/MATLAB/data/matfile/WholeVocMat/WholeVoc_Site2_L2000R1600_e27_s1_ss1.mat')
 if Savio %savio Cluster
     Dir_local='/global/scratch/jelie/MatFiles/';
-    unit=loadfromTdrive_savio(MatfilePath, Dir_local);
+    fprintf('load file %s\n', h5Path);
+    unit=loadfromTdrive_savio(h5Path, Dir_local);
 elseif Me
     unit = read_unit_h5file(h5Path, 'r');
 elseif (~Me && ~Savio)
