@@ -18,8 +18,7 @@ if ~isempty(strfind(getenv('HOSTNAME'),'ln')) || ~isempty(strfind(getenv('HOSTNA
     fprintf(1, 'We are on savio!\n')
     addpath(genpath('/global/home/users/jelie/CODE/SingleUnitModels'));
     addpath(genpath('/global/home/users/jelie/CODE/GeneralCode'));
-    addpath(genpath('/global/home/users/jelie/CODE/tlab/src/slurmbot/matlab'));
-    addpath(genpath('/global/home/users/jelie/CODE/tlab/src/h5analysis'));
+    addpath(genpath('/global/home/users/jelie/CODE/tlab/src'));
     addpath(genpath('/global/home/users/jelie/CODE/strflab/trunk'));
 elseif ismac()
     Savio=0;
