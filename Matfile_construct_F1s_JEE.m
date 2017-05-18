@@ -20,6 +20,7 @@ if ~isempty(strfind(getenv('HOSTNAME'),'ln')) || ~isempty(strfind(getenv('HOSTNA
     addpath(genpath('/global/home/users/jelie/CODE/GeneralCode'));
     addpath(genpath('/global/home/users/jelie/CODE/tlab/src/slurmbot/matlab'));
     addpath(genpath('/global/home/users/jelie/CODE/tlab/src/h5analysis'));
+    addpath(genpath('/global/home/users/jelie/CODE/strflab/trunk'));
 elseif ismac()
     Savio=0;
     Me = 1;
