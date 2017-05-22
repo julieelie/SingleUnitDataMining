@@ -17,6 +17,7 @@ if ~isempty(strfind(getenv('HOSTNAME'),'ln')) || ~isempty(strfind(getenv('HOSTNA
     Me=0;
     fprintf(1, 'We are on savio!\n')
     addpath(genpath('/global/home/users/jelie/CODE/SingleUnitModels'));
+    addpath(genpath('/global/home/users/jelie/CODE/SingleUnitDataMining'));
     addpath(genpath('/global/home/users/jelie/CODE/GeneralCode'));
     addpath(genpath('/global/home/users/jelie/CODE/density_estimation'));
     addpath(genpath('/global/home/users/jelie/CODE/tlab/src'));
@@ -138,7 +139,7 @@ if classId ~= 0
     
     %% Loop through stims
     %parfor
-    parfor isound = 1:nfiles
+    for isound = 1:nfiles
         fprintf(1,'sound %d/%d\n',isound, nfiles);
         response=responses{isound};
         stim_name=response.tdt_wavfile;
@@ -160,7 +161,7 @@ if classId ~= 0
             [sound_in, Samprate(isound)] = audioread(stim_name);
         elseif Savio
             stim_name = ['/global/scratch/jelie/' stim_name(strfind(stim_name,'Stims'):end)];
-            [sound_in, Samprate(isound)] = wavread(stim_name);
+            [sound_in, Samprate(isound)] = audioread(stim_name);
         else
             stim_name = ['/auto/tdrive/' stim_name(strfind(stim_name,'fdata'):end)];
             [sound_in, Samprate(isound)] = audioread(stim_name);

@@ -85,11 +85,19 @@ end
 Tin = (1:Ntimebins)-0.5;
 
 % Calculating the filered spike pattern from all trials
-[y,t,~,~,~,~,~] = ssvkernel(Spike_ArrivalT_AllT,Tin);
-% check that the input Tin was correctly used
-if sum(Tin == t)~=length(Tin)
-    error('WARNING: line 88 the kernel density estimation is using a different set of observation time points to return the filtered spike pattern\nThe # of time points used by ssvkernel is %d when we are asking for %d.\n', length(t),length(Tin));
+if sum(Spike_count)==1
+    y=ones(1,Ntimebins)./(Ntrials*Ntimebins);
+elseif sum(Spike_count)==0
+    y=ones(1,Ntimebins)./(2*Ntrials*Ntimebins); 
+else
+    [y,t,~,~,~,~,~] = ssvkernel(Spike_ArrivalT_AllT,Tin);
+    % check that the input Tin was correctly used
+    if sum(Tin == t)~=length(Tin)
+        error('WARNING: line 88 the kernel density estimation is using a different set of observation time points to return the filtered spike pattern\nThe # of time points used by ssvkernel is %d when we are asking for %d.\n', length(t),length(Tin));
+    end
 end
+
+
 % y is a density function that sums to 1
 % multiplying by the total number of spikes gives the number of expecting spike per time bin (here 1 ms) for all 10 Trials
 % dividing by the number of trials give the expected number os spikes per time bin for a trial
@@ -102,10 +110,17 @@ JK_KDEfiltered = nan(Ntrials,Ntimebins);
 for it = 1:Ntrials
     Local_trials = 1:Ntrials;
     Local_trials(it) = [];
-    [y,t,~,~,~,~,~] = ssvkernel(Spike_ArrivalT_JK{it},Tin);
-    if sum(Tin == t)~=length(Tin)
-        error('WARNING: line 105 the kernel density estimation for trial %d is using a different set of observation time points to return the filtered spike pattern\nThe # of time points used by ssvkernel is %d when we are asking for %d.\n', it, length(t),length(Tin));
+    if length(Spike_ArrivalT_JK{it})==1
+        y=ones(1,Ntimebins)./((Ntrials-1)*Ntimebins);
+    elseif isempty(Spike_ArrivalT_JK{it})
+        y=ones(1,Ntimebins)./(2*(Ntrials-1)*Ntimebins); 
+    else
+        [y,t,~,~,~,~,~] = ssvkernel(Spike_ArrivalT_JK{it},Tin);
+        if sum(Tin == t)~=length(Tin)
+            error('WARNING: line 105 the kernel density estimation for trial %d is using a different set of observation time points to return the filtered spike pattern\nThe # of time points used by ssvkernel is %d when we are asking for %d.\n', it, length(t),length(Tin));
+        end
     end
+    
     JK_KDEfiltered(it,:) = y * sum(Spike_count(Local_trials)) / (Ntrials-1) * Response_samprate/1000;
 end
 
@@ -128,18 +143,22 @@ if Fig
     
     % visually verify that the optimal kernel width is investigated by the
     % range of value tested
-    subplot(3,1,2)
-    [~,~,~,W,C,~,~] = sskernel(Spike_ArrivalT_AllT,Tin);
-    plot(W, C,'Color', 'r', 'LineWidth', 2);
-    xlabel('Kernel Width (# points)');
-    ylabel('Cost function');
-    YLim = get(gca,'YLim');
-    subplot(3,1,3)
-    plot(W, C,'Color', 'r', 'LineWidth', 2);
-    xlabel('Kernel Width (# points)');
-    ylabel('Cost function');
-    xlim([0 20])
-    ylim([min(YLim) min(YLim)+(max(YLim)-min(YLim))/4])
+    if sum(Spike_count)>1
+        subplot(3,1,2)
+        [~,~,~,W,C,~,~] = sskernel(Spike_ArrivalT_AllT,Tin);
+        plot(W, C,'Color', 'r', 'LineWidth', 2);
+        xlabel('Kernel Width (# points)');
+        ylabel('Cost function');
+        YLim = get(gca,'YLim');
+        subplot(3,1,3)
+        plot(W, C,'Color', 'r', 'LineWidth', 2);
+        xlabel('Kernel Width (# points)');
+        ylabel('Cost function');
+        xlim([0 20])
+        ylim([min(YLim) min(YLim)+(max(YLim)-min(YLim))/4])
+    else
+        fprintf('Only %d spikes, no density kernel estimation for that response', sum(Spike_count));
+    end
     pause(2);
 end
 
