@@ -139,7 +139,7 @@ if classId ~= 0
     
     %% Loop through stims
     %parfor
-    for isound = 1:nfiles
+    parfor isound = 1:nfiles
         fprintf(1,'sound %d/%d\n',isound, nfiles);
         response=responses{isound};
         stim_name=response.tdt_wavfile;
