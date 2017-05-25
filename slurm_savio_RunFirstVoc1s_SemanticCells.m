@@ -22,11 +22,11 @@ load('/auto/tdrive/julie/NeuralData/SemanticGLMModel/FanoFactor_CoherenceOptPSTH
 %% Set up the variables for slurm
 JobParams = struct;
 JobParams.Name = 'Info';
-JobParams.Partition = 'savio';
+JobParams.Partition = 'savio2';
 JobParams.Account = 'fc_birdpow';
 JobParams.Qos = 'savio_normal';
 JobParams.NTasks = 1;
-JobParams.CPU = 20;
+JobParams.CPU = 24;
 SlurmParams.cmd = 'Matfile_construct_F1s_JEE(''%s'');';
 SlurmParams.resultsDirectory='/global/scratch/jelie/MatFiles/ModMatInfo';
 
