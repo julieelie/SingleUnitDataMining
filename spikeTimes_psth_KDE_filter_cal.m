@@ -102,7 +102,7 @@ end
 % multiplying by the total number of spikes gives the number of expecting spike per time bin (here 1 ms) for all 10 Trials
 % dividing by the number of trials give the expected number os spikes per time bin for a trial
 % multiplying by the response sampling rate in kHz gives the expected spike rate to one stimulus presentation in spike/ms
-Psth_KDEfiltered =  y * sum(Spike_count(Local_trials)) / Ntrials * Response_samprate/1000;
+Psth_KDEfiltered =  y * sum(Spike_count) / Ntrials * Response_samprate/1000;
 
 % Calculating the filered spike pattern from Ntrials-1 trials to obtain JK
 % (Jackknife) filtered spike patterns
@@ -128,7 +128,14 @@ end
 if Fig
     figure(6)
     subplot(3,1,1)
-    shadedErrorBar(Tin,Psth_KDEfiltered, std(JK_KDEfiltered,1),{'Color', 'k','LineStyle','-', 'LineWidth',1},1)
+    plot(Tin,Psth_KDEfiltered, 'Color','k')
+    hold on
+    plot(Tin, mean(JK_KDEfiltered,1), 'LineStyle', ':', 'Color','r', 'LineWidth',2)
+    legend('PSTH KDE Filtered', 'Average JK PSTH')
+    hold on
+    shadedErrorBar(Tin,Psth_KDEfiltered, std(JK_KDEfiltered,0,1),{'Color', 'k','LineStyle','-', 'LineWidth',1},1)
+    hold on
+    plot(Tin, mean(JK_KDEfiltered,1), 'LineStyle', ':', 'Color','r', 'LineWidth',2)
     hold on
     for tt=1:Ntrials
         Local_trial = find(Spike_array(tt,:));
