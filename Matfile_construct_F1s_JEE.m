@@ -388,6 +388,7 @@ if classId ~= 0
     
     if Savio
         OutputDir='/global/scratch/jelie/MatFiles/FirstVoc1sMat';
+        system(sprintf('mv /global/home/users/jelie/JobExecutableFiles/JobToDoSavio/ExJob%s* /global/home/users/jelie/JobExecutableFiles/JobToDoSavio/JobDoneSavio/', Res.Site))
     elseif Me
         OutputDir='/users/elie/Documents/CODE/data/matfile/FirstVoc1sMat';
     else
