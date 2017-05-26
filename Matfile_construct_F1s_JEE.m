@@ -131,7 +131,8 @@ if classId ~= 0
     
     %% Configure Parallel computing
     if ~isempty(strfind(getenv('HOSTNAME'),'.savio')) || ~isempty(strfind(getenv('HOSTNAME'),'.brc'))
-        MyParPool = parpool(str2num(getenv('SLURM_CPUS_ON_NODE')),'IdleTimeout', Inf);
+        %MyParPool = parpool(str2num(getenv('SLURM_CPUS_ON_NODE')),'IdleTimeout', Inf);
+        MyParPool = parpool(str2num(getenv('SLURM_CPUS_PER_TASK')),'IdleTimeout', Inf);
         system('mkdir -p /global/scratch/$USER/$SLURM_JOB_ID')
         [~,JobID] = system('echo $SLURM_JOB_ID');
         parcluster.JobStorageLocation = ['/global/scratch/jelie/' JobID];
