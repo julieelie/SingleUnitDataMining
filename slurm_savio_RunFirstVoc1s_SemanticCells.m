@@ -27,6 +27,7 @@ JobParams.Account = 'fc_birdpow';
 JobParams.Qos = 'savio_normal';
 JobParams.NTasks = 1;
 JobParams.CPU = 24;
+JobParams.TimeLimit = '00:20:00';
 SlurmParams.cmd = 'Matfile_construct_F1s_JEE(''%s'');';
 SlurmParams.resultsDirectory='/global/scratch/jelie/MatFiles/ModMatInfo';
 
