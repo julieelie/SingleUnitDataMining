@@ -131,8 +131,8 @@ if classId ~= 0
     
     %% Configure Parallel computing
     if ~isempty(strfind(getenv('HOSTNAME'),'.savio')) || ~isempty(strfind(getenv('HOSTNAME'),'.brc'))
-        %MyParPool = parpool(str2num(getenv('SLURM_CPUS_ON_NODE')),'IdleTimeout', Inf);
-        MyParPool = parpool(20,'IdleTimeout', Inf);
+        MyParPool = parpool(str2num(getenv('SLURM_CPUS_ON_NODE')),'IdleTimeout', Inf);
+        %MyParPool = parpool(20,'IdleTimeout', Inf);
         system('mkdir -p /global/scratch/$USER/$SLURM_JOB_ID')
         [~,JobID] = system('echo $SLURM_JOB_ID');
         parcluster.JobStorageLocation = ['/global/scratch/jelie/' JobID];
@@ -357,7 +357,7 @@ if classId ~= 0
     
     %% Fill-in output structure
     Res.VocType=VocType; % this is the type of vocalization (e.g. distance call DC, Nest call Ne, Aggressive call Ag...)
-    Res.VocBank_wavfiles=VocBank_Wavfiles; % name of the wav file of the vocalization bank to which this section responded
+    %Res.VocBank_wavfiles=VocBank_Wavfiles; % name of the wav file of the vocalization bank to which this section responded
     Res.Original_wavfiles=Original_wavfiles; % The real stim is a combination of 1 or 3 calls or 2.5s song. This is the original name of the wav file JEE constructed with the vocalization from the vocalization bank.
     Res.TDT_wavfiles=TDT_wavfiles; % The name of same previous wav stim given by TDT (stim1, stim2.... stim136...)
     Res.WavIndices = WavIndices; % begining and end indices of each section within the TDT_wavfiles, just to be able to retrieve the wavform if needed

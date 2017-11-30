@@ -438,7 +438,7 @@ if classId ~= 0
     Res.Original_wavfiles=Original_wavfiles(1:nsections); % The real stim is a combination of 1 or 3 calls or 2.5s song. This is the original name of the wav file JEE constructed with the vocalization from the vocalization bank.
     Res.TDT_wavfiles=TDT_wavfiles(1:nsections); % The name of same previous wav stim given by TDT (stim1, stim2.... stim136...)
     Res.WavIndices = WavIndices(1:nsections); % begining and end indices of each section within the TDT_wavfiles, just to be able to retrieve the wavform if needed
-    %Res.SectionWave=SectionWave(1:nsections);
+    Res.SectionWave=SectionWave(1:nsections);
     Res.SectionLength = SectionLength(1:nsections); % duration of each section in ms
     Res.ESex=ESex(1:nsections); % Sex of the emitter of the vocalization
     Res.Eage=Eage(1:nsections);  % Age of the emitter of the vocalization
@@ -465,7 +465,7 @@ if classId ~= 0
                     filename = fullfile('/Users','frederictheunissen','Documents','Data','Julie','matfile',Res.subject,[Res.Site '.mat']);
                 end
             elseif strcmp(strtok(username), 'elie')
-                filename = fullfile('/Users','elie','Documents','MATLAB','data','matfile',Res.subject,['WholeVoc_' Res.Site '.mat']);
+                filename = fullfile('/Users','elie','Documents','MATLAB','data','matfile','WholeVocMat',['WholeVoc_' Res.Site '.mat']);
             end
     else
         filename=fullfile('/auto','k6','julie','matfile',Res.subject,['WholeVoc_' Res.Site '.mat']);

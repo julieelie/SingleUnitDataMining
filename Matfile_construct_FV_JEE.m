@@ -26,7 +26,7 @@ classId = 0;
 for ic=1:nclasses
     prot=unit.classes{ic};
     stimType='Call';
-    [path, Name, ext]=fileparts(unit.source_directory);
+    [~, Name, ~]=fileparts(unit.source_directory);
     if strcmp('WhiWhi4522M', Name) && strcmp('Site1', unit.site)
         if strcmp('Call1c', prot(1:6))
             classId = ic;
@@ -63,14 +63,14 @@ if classId ~= 0
         k=k+1;
     end
     if ismac()
-            [status username] = system('who am i');
+            [~, username] = system('who am i');
             if strcmp(strtok(username), 'frederictheunissen')
                 if strcmp('/auto/fdata/julie',DataDir)
                     DataDir='/Users/frederictheunissen/Documents/Data/Julie';
                 end
             elseif strcmp(strtok(username), 'elie')
                 if strcmp('/auto/fdata/julie',DataDir)
-                    DataDir='/Users/elie/Documents/MATLAB/data';
+                    DataDir='/Users/elie/Documents/CODE/data';
                     
                 end
             end
@@ -81,7 +81,7 @@ if classId ~= 0
         response=responses{isound};
         stim_name=response.tdt_wavfile;
         stim_name = strcat(DataDir, stim_name(18:end));
-        [sound_in, samprate] = wavread(stim_name);
+        [sound_in, samprate] = audioread(stim_name);
         iintensity=[];
         idur=[];
         iSound = zeros(0);
@@ -147,8 +147,10 @@ if classId ~= 0
             dur{isound}=idur;
             Sound{isound}=iSound;
     end
-    figure(2)
-    hist(histDur,60)
+    if pl
+        figure(2)
+        hist(histDur,60);
+    end
 
 
 
@@ -163,7 +165,7 @@ if classId ~= 0
     %'subject',{},'Site', {},'VocType', {}, 'tdt_wavfiles', {},'original_wavfiles',{}, 'EndBegIndices', {}, 'Cut_orders', {}, 'sex', {}, 'age', {}, 'related', {}, 'trials', {}, 'PSTH',{}, 'spectro', {}, 'section_cat', {});
 
     % indicate info on the site
-    [pathh5, nameh5, ext]=fileparts(h5Path);
+    [pathh5, nameh5, ~]=fileparts(h5Path);
     Res.subject=pathh5(end-10:end);
     Res.Site=nameh5;
 
@@ -190,6 +192,7 @@ if classId ~= 0
     
 
     for isound = 1:nfiles
+        fprintf('sound %d/%d\n', isound, nfiles)
         response=responses{isound};
         stim_name=response.tdt_wavfile;
         stim_number=str2double(response.number);
@@ -199,7 +202,7 @@ if classId ~= 0
     
         % Read the stim wave files on the cluster on a local mac machine.
         if ismac()
-            [status username] = system('who am i');
+            [~, username] = system('who am i');
             if strcmp(strtok(username), 'frederictheunissen')
                 if strncmp('/auto/fdata/solveig',stim_name, 19)
                     stim_name = strcat('/Users/frederictheunissen/Documents/Data/solveig', stim_name(20:end));
@@ -210,11 +213,11 @@ if classId ~= 0
                 if strncmp('/auto/fdata/solveig',stim_name, 19)
                     stim_name = strcat('/Users/frederictheunissen/Documents/Data/solveig', stim_name(20:end));
                 elseif strncmp('/auto/fdata/julie',stim_name, 17)
-                    stim_name = strcat('/Users/elie/Documents/MATLAB/data', stim_name(18:end));
+                    stim_name = strcat('/Users/elie/Documents/CODE/data', stim_name(18:end));
                 end
             end
         end
-        [sound_in, samprate] = wavread(stim_name);
+        [sound_in, samprate] = audioread(stim_name);
     
         %Find Silences longer than 60ms between vocalizations
         idur2=[];
@@ -238,7 +241,7 @@ if classId ~= 0
             end
             yy = yy + 1;
         end
-        [r,c]=size(Sil);
+        [~,c]=size(Sil);
         on=ones(size(sound_in));
         if c~=0
             for cc=1:c
@@ -307,8 +310,7 @@ if classId ~= 0
         laston = 0;
         begInd=0;
         i=0;
-        while nsections<2 && i<length(on)
-            nsections<2 && i<length(on);
+        while (nsections<2) && (i<length(on))
             i = i + 1;
             %for i=1:length(on)
                 if (laston == 0) && (on(i)~=0)
@@ -445,7 +447,7 @@ if classId ~= 0
         winLength = fix(winLength/2)*2;            % Enforce even window length
         increment = fix(0.001*samprate);           % Sampling rate of spectrogram in number of points - set at 1 kHz
         %calculate spectro
-        [s, to, fo, pg] = GaussianSpectrum(SectionWave{n1section}, increment, winLength, samprate);
+        [s, to, fo, ~] = GaussianSpectrum(SectionWave{n1section}, increment, winLength, samprate);
         %reshape and store spectro
         D=length(to);
         F=length(fo);
@@ -456,7 +458,7 @@ if classId ~= 0
 
         %% Isolate spikes that relate to the section and...
         ...calculate average (psth) for this section.
-        [Section_Trials,psth,stim_mean_rate, spike_std_rate, spike_zscore, pvalue, tvalue] = spikeTimes_psth_cal(begInd_spike, endInd_spike, samprate,response,spike_rate_bg, Win);
+        [Section_Trials,psth,~, ~, ~, ~, ~] = spikeTimes_psth_cal(begInd_spike, endInd_spike, samprate,response,spike_rate_bg, Win);
         Trials{n1section}=Section_Trials;
         PSTH{n1section}=psth;
 
@@ -529,11 +531,11 @@ if classId ~= 0
 
     Res.VocType=VocType(1:n1section); % this is the type of vocalization (e.g. distance call DC, Nest call Ne, Aggressive call Ag...)
     Res.Section_cat=Section_cat(1:n1section); % identify whether the section contain an entire vocalization (full) a portion of a vocalization (cut) just the end of a vocalization (cut_end)
-    Res.VocBank_wavfiles=VocBank_Wavfiles(1:n1section); % name of the wav file of the vocalization bank to which this section responded
+    %Res.VocBank_wavfiles=VocBank_Wavfiles(1:n1section); % name of the wav file of the vocalization bank to which this section responded
     Res.Original_wavfiles=Original_wavfiles(1:n1section); % The real stim is a combination of 1 or 3 calls or 2.5s song. This is the original name of the wav file JEE constructed with the vocalization from the vocalization bank.
     Res.TDT_wavfiles=TDT_wavfiles(1:n1section); % The name of same previous wav stim given by TDT (stim1, stim2.... stim136...)
     Res.WavIndices = WavIndices(1:n1section); % begining and end indices of each section within the TDT_wavfiles, just to be able to retrieve the wavform if needed
-    %Res.SectionWave=SectionWave(1:nsections);
+    Res.SectionWave=SectionWave(1:n1section);
     Res.SectionLength = SectionLength(1:n1section); % duration of each section in ms
     Res.ESex=ESex(1:n1section); % Sex of the emitter of the vocalization
     Res.Eage=Eage(1:n1section);  % Age of the emitter of the vocalization
@@ -548,14 +550,14 @@ if classId ~= 0
     Res.Trials_BG=Trials_BG(1:n1section);
 
     if ismac()
-            [status username] = system('who am i');
+            [~, username] = system('who am i');
             if strcmp(strtok(username), 'frederictheunissen')
                 if strncmp('/auto/fdata/solveig',stim_name, 19)
                 elseif strncmp('/auto/fdata/julie',stim_name, 17)
                     filename = fullfile('/Users','frederictheunissen','Documents','Data','Julie','matfile',Res.subject,['FirstVoc_' Res.Site '.mat']);
                 end
             elseif strcmp(strtok(username), 'elie')
-                filename = fullfile('/Users','elie','Documents','MATLAB','data','matfile',Res.subject,['FirstVoc_' Res.Site '.mat']);
+                filename = fullfile('/Users','elie','Documents','CODE','data','matfile','FirstVocMat',['FirstVoc_' Res.Site '.mat']);
             end
     else
         filename=fullfile('/auto','k6','julie','matfile',Res.subject,['FirstVoc_' Res.Site '.mat']);

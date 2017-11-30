@@ -27,7 +27,7 @@ for ss=1:length(Subjects)
         Idir=fullfile(input_dir, Indiv);
         if strcmp(AT, 'R') || strcmp(AT, 'MD')
             matfiles=dir(fullfile(Idir,'WholeVoc*.mat'));
-        elseif strcmp(AT, 'CM')||strcmp(AT,'CMV')||strcmp(AT,'FVL');
+        elseif strcmp(AT, 'CM')||strcmp(AT,'CMV')||strcmp(AT,'FVL')
             matfiles=dir(fullfile(Idir,'FirstVoc*.mat'));
         elseif strcmp(AT, 'RD') || strcmp(AT, 'RDP')
             matfiles=dir(fullfile(Idir,'ConfMat*.mat'));
@@ -88,7 +88,7 @@ for ss=1:length(Subjects)
             %Make sure the file does not already exists
             FE=0;
             for cc = 1:CM
-                if strcmp(Calmatfiles(cc).name(end-27:end), matfile.name(end-27:end));
+                if strcmp(Calmatfiles(cc).name(end-27:end), matfile.name(end-27:end))
                     fprintf('%s has already a Matfile\n', matfile.name);
                     if OW==0
                         FE=1;%switch to file exist only if OverWriting is not requested
