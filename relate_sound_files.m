@@ -1,23 +1,26 @@
-function [OldWav]=relate_sound_files(Indiv)
+function [OldWav]=relate_sound_files(Indiv, DataDir)
 
 % Find on which machine we are and where are stored the data
+if nargin<2 || isempty(DataDir)   
     DataDir = '/auto/tdrive/fdata/julie';
     if ismac()
             [status username] = system('who am i');
             if strcmp(strtok(username), 'frederictheunissen')
-                if strcmp('/auto/fdata/julie',DataDir)
+                if strcmp('/auto/tdrive/fdata/julie',DataDir)
                     DataDir='/Users/frederictheunissen/Documents/Data/Julie';
                 end
             elseif strcmp(strtok(username), 'elie')
-                if strcmp('/auto/fdata/julie',DataDir)
-                    DataDir='/Users/elie/Documents/MATLAB/data';
+                if strcmp('/auto/tdrive/fdata/julie',DataDir)
+                    DataDir='/Users/elie/Documents/CODE/data';
                     
                 end
             end
     end
+    DataDir = strcat(DataDir, '/Stims/');
+end
     
     % Find the protocol file that list the original wav files used as stims
-    ProtoDir = strcat(DataDir, '/Stims/', Indiv);
+    ProtoDir = strcat(DataDir, Indiv);
     %ProtoDir = strcat('/auto/k8/fdata/julie/stim', Indiv);
     TrackDir=strcat(ProtoDir, '/Call');
     TrackFile=dir(fullfile(TrackDir, 'WavTracker*.txt'));

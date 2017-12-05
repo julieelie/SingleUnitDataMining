@@ -64,7 +64,7 @@ if classId ~= 0
                 end
             elseif strcmp(strtok(username), 'elie')
                 if strcmp('/auto/fdata/julie',DataDir)
-                    DataDir='/Users/elie/Documents/MATLAB/data';
+                    DataDir='/Users/elie/Documents/CODE/data';
                     
                 end
             end
@@ -75,7 +75,7 @@ if classId ~= 0
         response=responses{isound};
         stim_name=response.tdt_wavfile;
         stim_name = strcat(DataDir, stim_name(18:end));
-        [sound_in, samprate] = wavread(stim_name);
+        [sound_in, samprate] = audioread(stim_name);
         iintensity=[];
         idur=[];
         iSound = zeros(0);
@@ -252,11 +252,11 @@ if classId ~= 0
                 if strncmp('/auto/fdata/solveig',stim_name, 19)
                     stim_name = strcat('/Users/frederictheunissen/Documents/Data/solveig', stim_name(20:end));
                 elseif strncmp('/auto/fdata/julie',stim_name, 17)
-                    stim_name = strcat('/Users/elie/Documents/MATLAB/data', stim_name(18:end));
+                    stim_name = strcat('/Users/elie/Documents/CODE/data', stim_name(18:end));
                 end
             end
         end
-        [sound_in, samprate] = wavread(stim_name);
+        [sound_in, samprate] = audioread(stim_name);
     
         %Find Silences longer than 60ms between vocalizations
         idur2=[];
@@ -465,7 +465,7 @@ if classId ~= 0
                     filename = fullfile('/Users','frederictheunissen','Documents','Data','Julie','matfile',Res.subject,[Res.Site '.mat']);
                 end
             elseif strcmp(strtok(username), 'elie')
-                filename = fullfile('/Users','elie','Documents','MATLAB','data','matfile','WholeVocMat',['WholeVoc_' Res.Site '.mat']);
+                filename = fullfile('/Users','elie','Documents','CODE','data','matfile','WholeVocMat',['WholeVoc_' Res.Site '.mat']);
             end
     else
         filename=fullfile('/auto','k6','julie','matfile',Res.subject,['WholeVoc_' Res.Site '.mat']);

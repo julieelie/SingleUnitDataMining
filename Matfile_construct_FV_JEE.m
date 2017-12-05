@@ -1,20 +1,73 @@
-function [filename]=Matfile_construct_FV_JEE(h5Path, OldWav, pl)
+function [filename]=Matfile_construct_FV_JEE(h5Path,  pl)
 %% This function cut tdt stim to isolate vocalizations as much as possible...
 ...and just take the first vocalization of each stim that it places in ...
     ...a window of xxxms
 
-duration=0.02; % duration in ms of min silence period
-if nargin<3
-    pl=0; %set to 0 for no graph; 1 if you want to see final results per stim; 2 if you to see both steps graph
-end
+%% Get the environment to figure out on which machine/cluster we are
+fprintf(1,'The environment is: %s\n',getenv('HOSTNAME'))
 
+if ~isempty(strfind(getenv('HOSTNAME'),'ln')) || ~isempty(strfind(getenv('HOSTNAME'),'.savio')) || ~isempty(strfind(getenv('HOSTNAME'),'.brc'))%savio Cluster
+    Savio=1;
+    Me=0;
+    fprintf(1, 'We are on savio!\n')
+    addpath(genpath('/global/home/users/jelie/CODE/SingleUnitModels'));
+    addpath(genpath('/global/home/users/jelie/CODE/SingleUnitDataMining'));
+    addpath(genpath('/global/home/users/jelie/CODE/GeneralCode'));
+    addpath(genpath('/global/home/users/jelie/CODE/density_estimation'));
+    addpath(genpath('/global/home/users/jelie/CODE/tlab/src'));
+    addpath(genpath('/global/home/users/jelie/CODE/strflab/trunk'));
+    StimDir = '/global/scratch/jelie/Stims';
+elseif ismac()
+    Savio=0;
+    Me = 1;
+    fprintf(1, 'We are on my Mac Book Pro!\n')
+    addpath(genpath('/Users/elie/Documents/CODE/SingleUnitModels'));
+    addpath(genpath('/Users/elie/Documents/CODE/density_estimation'));
+    addpath(genpath('/Users/elie/Documents/CODE/GeneralCode'));
+    addpath(genpath('/Users/elie/Documents/CODE/STRFLab/trunk'));
+    addpath(genpath('/Users/elie/Documents/CODE/tlab/src'));
+    StimDir = '/Users/elie/Documents/CODE/data/Stims/';
+else %we are on strfinator or a cluster machine
+    Savio = 0;
+    Me = 0;
+    fprintf(1, 'Hum.. We must be on one of the lab machine\n')
+    addpath(genpath('/auto/fhome/julie/Code/SingleUnitModels'));
+    addpath(genpath('/auto/fhome/julie/Code/density_estimation'));
+    addpath(genpath('/auto/fhome/julie/Code/GeneralCode'));
+    addpath(genpath('/auto/fhome/julie/Code/strflab'));
+    addpath(genpath('/auto/fhome/julie/Code/tlab/src'));
+    StimDir = '/auto/tdrive/fdata/julie/Stims';
+end
 
 %%  I choose 600ms as a window to put the first voc of each stim in according...
 ... to values obtain with soundduration_invest.m
+
+duration=0.02; % duration in ms of min silence period
+if nargin<2
+    pl=0; %set to 0 for no graph; 1 if you want to see final results per stim; 2 if you to see both steps graph
+end
+
 Win=0.6;
 
-    %% Read input data from data base
-unit = read_unit_h5file(h5Path, 'r');
+%% Parameters for the estiamtion of spike rate
+%1 000 corresponds to 1 ms precision, TDT sampling rate is little above 24kHz so that's good enough 
+Response_samprate = 1000;
+% Number of time bins of the response with choosen sampling rate. For 1bin=1ms response_samprate=1000
+Ntimebins = round(Response_samprate*Win);
+% Setting the vector of points in ms at which an output value will be given
+% for the filtered spike patterns
+Tin = (1:Ntimebins)-0.5;
+
+%% Read input data from data base
+if Savio %savio Cluster
+    Dir_local='/global/scratch/jelie/MatFiles/';
+    fprintf('load file %s\n', h5Path);
+    unit=loadfromTdrive_savio(h5Path, Dir_local);
+elseif Me
+    unit = read_unit_h5file(h5Path, 'r');
+elseif (~Me && ~Savio)
+    unit = read_unit_h5file(h5Path, 'r');
+end
 
 %% Select the protocol (SelX, Callx, Maskx, STRFx...)
 %number of different protocols run for that unit, identify if the one
@@ -39,7 +92,10 @@ for ic=1:nclasses
 end
 
 if classId ~= 0
-
+    %% Retrieve name of the stimuli in the vocalization database
+    [OldWav]=relate_sound_files(Name, StimDir);
+    
+    %% Get responses
     responses = unit.class_responses.(prot);
 
     %% Cutting procedure based on zero values to calculate intensity values of each cut
@@ -76,12 +132,21 @@ if classId ~= 0
             end
     end
     
+       %% Configure Parallel computing
+    if ~isempty(strfind(getenv('HOSTNAME'),'.savio')) || ~isempty(strfind(getenv('HOSTNAME'),'.brc'))
+        MyParPool = parpool(str2num(getenv('SLURM_CPUS_ON_NODE')),'IdleTimeout', Inf);
+        %MyParPool = parpool(20,'IdleTimeout', Inf);
+        system('mkdir -p /global/scratch/$USER/$SLURM_JOB_ID')
+        [~,JobID] = system('echo $SLURM_JOB_ID');
+        parcluster.JobStorageLocation = ['/global/scratch/jelie/' JobID];
+    end
+    
     %Loop through files, detect sound periods
-    for isound = 1:nfiles
+   parfor isound = 1:nfiles
         response=responses{isound};
-        stim_name=response.tdt_wavfile;
-        stim_name = strcat(DataDir, stim_name(18:end));
-        [sound_in, samprate] = audioread(stim_name);
+        stim_name1=response.tdt_wavfile;
+        stim_name1 = strcat(DataDir, stim_name1(18:end));
+        [sound_in, samprate1] = audioread(stim_name1);
         iintensity=[];
         idur=[];
         iSound = zeros(0);
@@ -110,7 +175,7 @@ if classId ~= 0
             on(ind) = 0.08;    % It is set at 0.8 to make a nice graphic.
             on(ind2) = 0.08;
             if pl==2        
-                plot_sound_spike_selection_h5(response, sound_in, samprate, on);
+                plot_sound_spike_selection_h5(response, sound_in, samprate1, on);
                 pause(1);
             end
     
@@ -120,14 +185,14 @@ if classId ~= 0
                 if (laston == 0) && (on(i)~=0)
                     begInd = i;
                 elseif (laston~=0) && (on(i) == 0) || (laston~=0) && (i==length(on))
-                    endInd = i;
-                    durInd = endInd - begInd;
+                    endInd1 = i;
+                    durInd = endInd1 - begInd;
                 
                     
-                    if (durInd > samprate*duration)    % Only examine stimulus intervals of certain length
+                    if (durInd > samprate1*duration)    % Only examine stimulus intervals of certain length
                     % calculate duration, peak frequency and intensity
-                    durVal = (endInd-begInd)/samprate;
-                    intVal = std(sound_in(begInd:endInd));
+                    durVal = (endInd1-begInd)/samprate1;
+                    intVal = std(sound_in(begInd:endInd1));
                     %[Pxx,f] = pwelch(sound_in(begInd:endInd), nw, fix(nw/2) , nw, samprate);
                     %Pmax = max(Pxx);
                     %fVal = f(Pxx==Pmax);
@@ -136,7 +201,7 @@ if classId ~= 0
                     iintensity = [iintensity intVal];
                     histDur = [histDur durVal];
                     idur = [idur durVal];
-                    iSound = [iSound [begInd ; endInd]];
+                    iSound = [iSound [begInd ; endInd1]];
                     % fprintf(1, 'Beg= %.2f End= %.2f Int= %.2f Dur= %.2f Freq= %.0f RD= %.2f\n', begTime, endTime, 20*log10(intVal), durVal, fVal, rateDiffVal);
                     end
                 end
@@ -155,6 +220,10 @@ if classId ~= 0
 
 
     %%  Define the length of the section
+    response=responses{1};
+    stim_name=response.tdt_wavfile;
+    stim_name = strcat(DataDir, stim_name(18:end));
+    [~, samprate] = audioread(stim_name);
     Lsection=ceil(Win*samprate);
 
 
@@ -170,26 +239,27 @@ if classId ~= 0
     Res.Site=nameh5;
 
     % prepare cell arrays
-    coeff=8; %estimate of 8 sections per stim on average
-    VocType=cell(nfiles*coeff,1);
-    TDT_wavfiles=cell(nfiles*coeff,1);
-    VocBank_Wavfiles=cell(nfiles*coeff,1);
-    Original_wavfiles=cell(nfiles*coeff,1);
-    SectionWave=cell(nfiles*coeff,1);
-    WavIndices=cell(nfiles*coeff,1);
-    SectionLength = zeros(nfiles*coeff,1);
-    ESex=cell(nfiles*coeff,1);
-    Eage=cell(nfiles*coeff,1);
-    Erelated=cell(nfiles*coeff,1);
-    Trials=cell(nfiles*coeff,1);
-    Trials_BG=cell(nfiles*coeff,1);
-    PSTH=cell(nfiles*coeff,1);
-    PSTH_BG=cell(nfiles*coeff,1);
-    Spectro=cell(nfiles*coeff,1);
-    Section_cat=cell(nfiles*coeff,1);
-    histDur2=[];
-    n1section = 0;
+    VocType=cell(nfiles,1);
+    TDT_wavfiles=cell(nfiles,1);
+    VocBank_Wavfiles=cell(nfiles,1);
+    Original_wavfiles=cell(nfiles,1);
+    SectionWave=cell(nfiles,1);
+    WavIndices=cell(nfiles,1);
+    SectionLength = zeros(nfiles,1);
+    ESex=cell(nfiles,1);
+    Eage=cell(nfiles,1);
+    Erelated=cell(nfiles,1);
+    Trials=cell(nfiles,1);
+    Trials_BG=cell(nfiles,1);
+    PSTH=cell(nfiles,1);
+    KDE_Rate=cell(nfiles,1);
+    PSTH_BG=cell(nfiles,1);
+    Spectro=cell(nfiles,1);
+    Section_cat=cell(nfiles,1);
+    Spectroto = cell(nfiles,1);
+    Spectrofo = cell(nfiles,1);
     
+  
 
     for isound = 1:nfiles
         fprintf('sound %d/%d\n', isound, nfiles)
@@ -201,26 +271,19 @@ if classId ~= 0
         end
     
         % Read the stim wave files on the cluster on a local mac machine.
-        if ismac()
-            [~, username] = system('who am i');
-            if strcmp(strtok(username), 'frederictheunissen')
-                if strncmp('/auto/fdata/solveig',stim_name, 19)
-                    stim_name = strcat('/Users/frederictheunissen/Documents/Data/solveig', stim_name(20:end));
-                elseif strncmp('/auto/fdata/julie',stim_name, 17)
-                    stim_name = strcat('/Users/frederictheunissen/Documents/Data/Julie', stim_name(18:end));
-                end
-            elseif strcmp(strtok(username), 'elie')
-                if strncmp('/auto/fdata/solveig',stim_name, 19)
-                    stim_name = strcat('/Users/frederictheunissen/Documents/Data/solveig', stim_name(20:end));
-                elseif strncmp('/auto/fdata/julie',stim_name, 17)
-                    stim_name = strcat('/Users/elie/Documents/CODE/data', stim_name(18:end));
-                end
-            end
+         % Read the stim wave files on the cluster or on a local mac machine.
+        if Me
+            stim_name = strcat('/Users/elie/Documents/CODE/data', stim_name(18:end));
+            [sound_in, Samprate(isound)] = audioread(stim_name);
+        elseif Savio
+            stim_name = ['/global/scratch/jelie/' stim_name(strfind(stim_name,'Stims'):end)];
+            [sound_in, Samprate(isound)] = audioread(stim_name);
+        else
+            stim_name = ['/auto/tdrive/' stim_name(strfind(stim_name,'fdata'):end)];
+            [sound_in, Samprate(isound)] = audioread(stim_name);
         end
-        [sound_in, samprate] = audioread(stim_name);
     
         %Find Silences longer than 60ms between vocalizations
-        idur2=[];
         iintensity=intensity{isound};
         %%%%%%%%%%%%%%%Increase this a little more??? to enable separation
         %%%%%%%%%%%%%%%of nest calls?
@@ -326,7 +389,7 @@ if classId ~= 0
                     % calculate duration in sec and save the begining and end
                     % indices of the section if longer than 50ms (30ms of
                     % sound)
-                    durVal = (durInd)/samprate;
+                    dur{isound}=(durInd)/samprate;
                     if durInd>ceil(0.05*samprate)%section needs to be longer than 50ms (20ms of silence + 30ms of sound) 
                         nsections=nsections+1;%increment the section number for that sound
                         if endInd>length(sound_in) % the stim end by a vocalization ensure that we keep the tail of psth by extending the wavsection
@@ -342,9 +405,8 @@ if classId ~= 0
         end
         
         %% Isolate first vocalization section within a window of size Lsection
-        n1section=n1section+1; %increment the counter for first sections isolated
-        PSTH_BG{n1section}=psthbg; %save the psth of the correspoonding background calculated earlier
-        Trials_BG{n1section}=BG_Trials_temp; %save the spike arrival times of the background window on which is calculated the previous psth
+        PSTH_BG{isound}=psthbg; %save the psth of the correspoonding background calculated earlier
+        Trials_BG{isound}=BG_Trials_temp; %save the spike arrival times of the background window on which is calculated the previous psth
         
         % Find how much silence there is between the first and second
         % vocalization sections or the end of the stim
@@ -398,44 +460,44 @@ if classId ~= 0
             % write WavIndices with the new limits and save the section
             % of sound completed with needed zeros before the stim
             if begInd_spike<=0 %window begins before the start of the stim
-                WavIndices{n1section}(1)=1;
+                WavIndices{isound}(1)=1;
                 prezeros=zeros(abs(begInd_spike),1);
             else
-                WavIndices{n1section}(1)=begInd_spike;
+                WavIndices{isound}(1)=begInd_spike;
                 prezeros=[];
             end
             if Sil==0 %window stops after the end of the stim
-                WavIndices{n1section}(2)=length(sound_in);
+                WavIndices{isound}(2)=length(sound_in);
                 postzeros=zeros((endInd_spike - length(sound_in)),1);
             else
-                WavIndices{n1section}(2)=endInd_spike;
+                WavIndices{isound}(2)=endInd_spike;
                 postzeros=[];
             end
-             sec=[prezeros; sound_in(WavIndices{n1section}(1):WavIndices{n1section}(2)); postzeros];
+             sec=[prezeros; sound_in(WavIndices{isound}(1):WavIndices{isound}(2)); postzeros];
             
             
             if length(sec)~=Lsection
                 fprintf(1,'pb withduration of section, the sound length is %d when it should be %d\n', length(sec), Lsection);
             end
             
-            SectionWave{n1section} = sec;
-            SectionLength(n1section) = length(sec)/samprate*1000;%durée de l'extrait en ms ici
-            Section_cat{n1section}='full';
+            SectionWave{isound} = sec;
+            SectionLength(isound) = length(sec)/samprate*1000;%durée de l'extrait en ms ici
+            Section_cat{isound}='full';
         else
             %cut wav file and store
             begInd_spike=begInd;
             endInd_spike=begInd + Lsection;
             if begInd_spike<=0 %window begins before the start of the stim
-                WavIndices{n1section}=[1 endInd_spike];
+                WavIndices{isound}=[1 endInd_spike];
                 prezeros=zeros(abs(begInd_spike),1);
                 sec=[prezeros; sound_in(1:endInd_spike)];
             else
-                WavIndices{n1section}=[begInd_spike endInd_spike];
+                WavIndices{isound}=[begInd_spike endInd_spike];
                 sec=sound_in(begInd_spike : endInd_spike);
             end
-            SectionWave{n1section} = sec;
-            SectionLength(n1section) = length(sec)/samprate*1000;%durée de l'extrait en ms ici
-            Section_cat{n1section}='cut';
+            SectionWave{isound} = sec;
+            SectionLength(isound) = length(sec)/samprate*1000;%durée de l'extrait en ms ici
+            Section_cat{isound}='cut';
         end
                     
         %% calculate and store spectro
@@ -447,20 +509,42 @@ if classId ~= 0
         winLength = fix(winLength/2)*2;            % Enforce even window length
         increment = fix(0.001*samprate);           % Sampling rate of spectrogram in number of points - set at 1 kHz
         %calculate spectro
-        [s, to, fo, ~] = GaussianSpectrum(SectionWave{n1section}, increment, winLength, samprate);
+        [s, to, fo, ~] = GaussianSpectrum(SectionWave{isound}, increment, winLength, samprate);
         %reshape and store spectro
         D=length(to);
         F=length(fo);
         VectorS=reshape(abs(s),1,F*D);
-        Spectroto= to;
-        Spectrofo= fo;
-        Spectro{n1section}=VectorS;
+        Spectroto{isound}= to;
+        Spectrofo{isound}= fo;
+        Spectro{isound}=VectorS;
 
         %% Isolate spikes that relate to the section and...
         ...calculate average (psth) for this section.
         [Section_Trials,psth,~, ~, ~, ~, ~] = spikeTimes_psth_cal(begInd_spike, endInd_spike, samprate,response,spike_rate_bg, Win);
-        Trials{n1section}=Section_Trials;
-        PSTH{n1section}=psth;
+        Trials{isound}=Section_Trials;
+        PSTH{isound}=psth;
+        
+        % calculate Kernel density estimate of the rate
+        Ntrials=length(Trials{isound});
+        Spike_count = nan(Ntrials,1);
+        Spikes_Times = [];
+       for tt=1:Ntrials
+           Spikes_Times = [Spikes_Times Trials{isound}{tt}];
+           Spike_count(tt) = length(Trials{isound}{tt});
+       end
+       
+        %Calculate the kernel  density estimate of the rate
+        [y,t,~,~,~,~,~] = ssvkernel(Spikes_Times,Tin);
+        % check that the input Tin was correctly used
+        if sum(Tin == t)~=length(Tin)
+            error('WARNING: the kernel density estimation is using a different set of observation time points to return the filtered spike pattern\nThe # of time points used by ssvkernel is %d when we are asking for %d.\n', length(t),length(Tin));
+        end
+        
+        % y is a density function that sums to 1
+        % multiplying by the total number of spikes gives the number of expecting spike per time bin (here 1 ms) for all 10 Trials
+        % dividing by the number of trials give the expected number of spikes per time bin for a trial
+        % multiplying by the response sampling rate in kHz gives the expected spike rate to one stimulus presentation in spike/ms
+        KDE_Rate{isound}=y* sum(Spike_count) / Ntrials * Response_samprate/1000;
 
         %% Plot sound pressure waveform, spectrogram and psth isolated
         if pl>0
@@ -475,8 +559,9 @@ if classId ~= 0
             axis xy;
             caxis('manual');
             caxis([minB maxB]); 
+            v_axis = nan(4,1);
             v_axis(1) = 0;
-            v_axis(2) = SectionLength(n1section)/1000;
+            v_axis(2) = SectionLength(isound)/1000;
             v_axis(3)= 0; 
             v_axis(4)= 12000;
             axis(v_axis);                                
@@ -495,79 +580,67 @@ if classId ~= 0
 
             subplot(3,1,3)
             cla;
-            wave=SectionWave{n1section};
+            wave=SectionWave{isound};
             plot(wave)
             pause
         end
         
         %% Store other infos on section
-        VocType{n1section}=voctype{isound};
-        TDT_wavfiles{n1section}=response.tdt_wavfile;
-        Original_wavfiles{n1section}=response.original_wavfile;
+        VocType{isound}=voctype{isound};
+        TDT_wavfiles{isound}=response.tdt_wavfile;
+        Original_wavfiles{isound}=response.original_wavfile;
         if strcmp(response.stim_type,'call')
-            ESex{n1section}=response.stim_source_sex;
-            Eage{n1section}=response.callerAge;
-            Erelated{n1section}=response.stim_source;
+            ESex{isound}=response.stim_source_sex;
+            Eage{isound}=response.callerAge;
+            Erelated{isound}=response.stim_source;
             if ~isempty(OldWav)
-                VocBank_Wavfiles{n1section}=OldWav{VocBank_idx, 3};
+                VocBank_Wavfiles{isound}=OldWav{VocBank_idx, 3};
             end
         else
-            ESex{n1section}='NaN';
-            Eage{n1section}='NaN';
-            Erelated{n1section}='NaN';
+            ESex{isound}='NaN';
+            Eage{isound}='NaN';
+            Erelated{isound}='NaN';
             if ~isempty(OldWav)
-                VocBank_Wavfiles{n1section}=OldWav{VocBank_idx, 3};
+                VocBank_Wavfiles{isound}=OldWav{VocBank_idx, 3};
             end
         end
-
-        % Stuff values
-        %iintensity2 = [iintensity2 intVal];
-        histDur2 = [histDur2 durVal];
-        idur2 = [idur2 durVal];
     end
-    %intensity{isound}=iintensity2;
-    dur{isound}=idur2;
-    hist(histDur2,60)
+    
 
-    Res.VocType=VocType(1:n1section); % this is the type of vocalization (e.g. distance call DC, Nest call Ne, Aggressive call Ag...)
-    Res.Section_cat=Section_cat(1:n1section); % identify whether the section contain an entire vocalization (full) a portion of a vocalization (cut) just the end of a vocalization (cut_end)
-    %Res.VocBank_wavfiles=VocBank_Wavfiles(1:n1section); % name of the wav file of the vocalization bank to which this section responded
-    Res.Original_wavfiles=Original_wavfiles(1:n1section); % The real stim is a combination of 1 or 3 calls or 2.5s song. This is the original name of the wav file JEE constructed with the vocalization from the vocalization bank.
-    Res.TDT_wavfiles=TDT_wavfiles(1:n1section); % The name of same previous wav stim given by TDT (stim1, stim2.... stim136...)
-    Res.WavIndices = WavIndices(1:n1section); % begining and end indices of each section within the TDT_wavfiles, just to be able to retrieve the wavform if needed
-    Res.SectionWave=SectionWave(1:n1section);
-    Res.SectionLength = SectionLength(1:n1section); % duration of each section in ms
-    Res.ESex=ESex(1:n1section); % Sex of the emitter of the vocalization
-    Res.Eage=Eage(1:n1section);  % Age of the emitter of the vocalization
-    Res.Erelated=Erelated(1:n1section); % Relation of the emitter to the subject (familiar, unfamiliar, self)
-    Res.Trials=Trials(1:n1section); % Contains the spike arrival times in ms from the begining of the section and not in ms from the begining of the stim as in h5 files!!!
-    Res.PSTH=PSTH(1:n1section);
-    Res.Spectro=Spectro(1:n1section);
+    Res.VocType=VocType(1:nfiles); % this is the type of vocalization (e.g. distance call DC, Nest call Ne, Aggressive call Ag...)
+    Res.Section_cat=Section_cat(1:nfiles); % identify whether the section contain an entire vocalization (full) a portion of a vocalization (cut) just the end of a vocalization (cut_end)
+    Res.VocBank_wavfiles=VocBank_Wavfiles(1:nfiles); % name of the wav file of the vocalization bank to which this section responded
+    Res.Original_wavfiles=Original_wavfiles(1:nfiles); % The real stim is a combination of 1 or 3 calls or 2.5s song. This is the original name of the wav file JEE constructed with the vocalization from the vocalization bank.
+    Res.TDT_wavfiles=TDT_wavfiles(1:nfiles); % The name of same previous wav stim given by TDT (stim1, stim2.... stim136...)
+    Res.WavIndices = WavIndices(1:nfiles); % begining and end indices of each section within the TDT_wavfiles, just to be able to retrieve the wavform if needed
+    Res.SectionWave=SectionWave(1:nfiles);
+    Res.SectionLength = SectionLength(1:nfiles); % duration of each section in ms
+    Res.ESex=ESex(1:nfiles); % Sex of the emitter of the vocalization
+    Res.Eage=Eage(1:nfiles);  % Age of the emitter of the vocalization
+    Res.Erelated=Erelated(1:nfiles); % Relation of the emitter to the subject (familiar, unfamiliar, self)
+    Res.Trials=Trials(1:nfiles); % Contains the spike arrival times in ms from the begining of the section and not in ms from the begining of the stim as in h5 files!!!
+    Res.PSTH=PSTH(1:nfiles);
+    Res.KDE_Rate=KDE_Rate(1:nfiles); % Kernel density estimate of the rate for each section
+    Res.Spectro=Spectro(1:nfiles);
     Res.Spectroto=Spectroto;
     Res.Spectrofo=Spectrofo;
     Res.VocDuration=dur;
-    Res.PSTH_BG=PSTH_BG(1:n1section);
-    Res.Trials_BG=Trials_BG(1:n1section);
-
-    if ismac()
-            [~, username] = system('who am i');
-            if strcmp(strtok(username), 'frederictheunissen')
-                if strncmp('/auto/fdata/solveig',stim_name, 19)
-                elseif strncmp('/auto/fdata/julie',stim_name, 17)
-                    filename = fullfile('/Users','frederictheunissen','Documents','Data','Julie','matfile',Res.subject,['FirstVoc_' Res.Site '.mat']);
-                end
-            elseif strcmp(strtok(username), 'elie')
-                filename = fullfile('/Users','elie','Documents','CODE','data','matfile','FirstVocMat',['FirstVoc_' Res.Site '.mat']);
-            end
+    Res.PSTH_BG=PSTH_BG(1:nfiles);
+    Res.Trials_BG=Trials_BG(1:nfiles);
+    
+%% Saving data
+     if Savio
+        OutputDir='/global/scratch/jelie/MatFiles/FirstVocMat';
+        system(sprintf('mv /global/home/users/jelie/JobExecutableFiles/JobToDoSavio/ExJob%s* /global/home/users/jelie/JobExecutableFiles/JobToDoSavio/JobDoneSavio/', Res.Site))
+    elseif Me
+        OutputDir='/users/elie/Documents/CODE/data/matfile/FirstVocMat';
     else
-        filename=fullfile('/auto','k6','julie','matfile',Res.subject,['FirstVoc_' Res.Site '.mat']);
+        OutputDir=fullfile('/auto','tdrive','julie','k6','julie','matfile','FirstVocMat');
     end
-    %if sum(ttest==1)>0    
-        save(filename, '-struct', 'Res');
-        fprintf('saved data under: %s\n', filename);
-    %else
-    %    fprintf('none significant site\n');
-    %end
+    filename=fullfile(OutputDir,['FirstVoc_' Res.Site '.mat']);
+    
+    save(filename, '-struct', 'Res');
+    fprintf('saved data under: %s\n', filename);
     clear duration Res VocType TDT_wavfiles Cut_orders Original_wavfiles WavIndices SectionWave ESex Eage Erelated Trials PSTH MeanRate StdRate Spectro Section_cat Section_zscore SectionLength Section_tvalue Section_pvalue sections_good_zscores
 else
     fprintf(1, 'Warning: could not find stimType %s in h5 file %s\n', stimType, h5Path);
