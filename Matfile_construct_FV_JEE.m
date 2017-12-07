@@ -16,7 +16,7 @@ if ~isempty(strfind(getenv('HOSTNAME'),'ln')) || ~isempty(strfind(getenv('HOSTNA
     addpath(genpath('/global/home/users/jelie/CODE/density_estimation'));
     addpath(genpath('/global/home/users/jelie/CODE/tlab/src'));
     addpath(genpath('/global/home/users/jelie/CODE/strflab/trunk'));
-    StimDir = '/global/scratch/jelie/Stims';
+    StimDir = '/global/scratch/jelie/Stims/';
 elseif ismac()
     Savio=0;
     Me = 1;
@@ -36,7 +36,7 @@ else %we are on strfinator or a cluster machine
     addpath(genpath('/auto/fhome/julie/Code/GeneralCode'));
     addpath(genpath('/auto/fhome/julie/Code/strflab'));
     addpath(genpath('/auto/fhome/julie/Code/tlab/src'));
-    StimDir = '/auto/tdrive/fdata/julie/Stims';
+    StimDir = '/auto/tdrive/fdata/julie/Stims/';
 end
 
 %%  I choose 600ms as a window to put the first voc of each stim in according...
@@ -109,29 +109,6 @@ if classId ~= 0
     Sound = cell(nfiles,1);
     histDur=[];
     
-    % Find on which machine we are and where are stored the data
-    [SoundPath] =fileparts(responses{1}.original_wavfile);
-    SoundPathParts = textscan(SoundPath, '%s', 'Delimiter', '\\/');
-    DataDir = '';
-    k = 2;
-    while ~strcmp(SoundPathParts{1}{k},'Stims')
-        DataDir = strcat(DataDir, '/', SoundPathParts{1}{k});
-        k=k+1;
-    end
-    if ismac()
-            [~, username] = system('who am i');
-            if strcmp(strtok(username), 'frederictheunissen')
-                if strcmp('/auto/fdata/julie',DataDir)
-                    DataDir='/Users/frederictheunissen/Documents/Data/Julie';
-                end
-            elseif strcmp(strtok(username), 'elie')
-                if strcmp('/auto/fdata/julie',DataDir)
-                    DataDir='/Users/elie/Documents/CODE/data';
-                    
-                end
-            end
-    end
-    
        %% Configure Parallel computing
     if ~isempty(strfind(getenv('HOSTNAME'),'.savio')) || ~isempty(strfind(getenv('HOSTNAME'),'.brc'))
         MyParPool = parpool(str2num(getenv('SLURM_CPUS_ON_NODE')),'IdleTimeout', Inf);
@@ -145,7 +122,8 @@ if classId ~= 0
    parfor isound = 1:nfiles
         response=responses{isound};
         stim_name1=response.tdt_wavfile;
-        stim_name1 = strcat(DataDir, stim_name1(18:end));
+        IndS = strfind(stim_name1,'Stims');
+        stim_name1 = strcat(StimDir, stim_name1((IndS+6):end));
         [sound_in, samprate1] = audioread(stim_name1);
         iintensity=[];
         idur=[];
@@ -222,7 +200,8 @@ if classId ~= 0
     %%  Define the length of the section
     response=responses{1};
     stim_name=response.tdt_wavfile;
-    stim_name = strcat(DataDir, stim_name(18:end));
+    IndS = strfind(stim_name,'Stims');
+    stim_name = strcat(StimDir, stim_name((IndS+6):end));
     [~, samprate] = audioread(stim_name);
     Lsection=ceil(Win*samprate);
 
@@ -245,10 +224,12 @@ if classId ~= 0
     Original_wavfiles=cell(nfiles,1);
     SectionWave=cell(nfiles,1);
     WavIndices=cell(nfiles,1);
+    Samprate = nan(nfiles,1);
     SectionLength = zeros(nfiles,1);
     ESex=cell(nfiles,1);
     Eage=cell(nfiles,1);
     Erelated=cell(nfiles,1);
+    Ename =cell(nfiles,1);
     Trials=cell(nfiles,1);
     Trials_BG=cell(nfiles,1);
     PSTH=cell(nfiles,1);
@@ -261,7 +242,7 @@ if classId ~= 0
     
   
 
-    for isound = 1:nfiles
+    parfor isound = 1:nfiles
         fprintf('sound %d/%d\n', isound, nfiles)
         response=responses{isound};
         stim_name=response.tdt_wavfile;
@@ -272,16 +253,9 @@ if classId ~= 0
     
         % Read the stim wave files on the cluster on a local mac machine.
          % Read the stim wave files on the cluster or on a local mac machine.
-        if Me
-            stim_name = strcat('/Users/elie/Documents/CODE/data', stim_name(18:end));
-            [sound_in, Samprate(isound)] = audioread(stim_name);
-        elseif Savio
-            stim_name = ['/global/scratch/jelie/' stim_name(strfind(stim_name,'Stims'):end)];
-            [sound_in, Samprate(isound)] = audioread(stim_name);
-        else
-            stim_name = ['/auto/tdrive/' stim_name(strfind(stim_name,'fdata'):end)];
-            [sound_in, Samprate(isound)] = audioread(stim_name);
-        end
+        IndS = strfind(stim_name,'Stims');
+        stim_name = strcat(StimDir, stim_name((IndS+6):end));
+        [sound_in, Samprate(isound)] = audioread(stim_name);
     
         %Find Silences longer than 60ms between vocalizations
         iintensity=intensity{isound};
@@ -534,10 +508,17 @@ if classId ~= 0
        end
        
         %Calculate the kernel  density estimate of the rate
-        [y,t,~,~,~,~,~] = ssvkernel(Spikes_Times,Tin);
-        % check that the input Tin was correctly used
-        if sum(Tin == t)~=length(Tin)
-            error('WARNING: the kernel density estimation is using a different set of observation time points to return the filtered spike pattern\nThe # of time points used by ssvkernel is %d when we are asking for %d.\n', length(t),length(Tin));
+        % Calculating the filered spike pattern from all trials
+        if sum(Spike_count)==1
+            y=ones(1,Ntimebins)./(Ntrials*Ntimebins);
+        elseif sum(Spike_count)==0
+            y=ones(1,Ntimebins)./(2*Ntrials*Ntimebins); 
+        else
+            [y,t,~,~,~,~,~] = ssvkernel(Spikes_Times,Tin);
+            % check that the input Tin was correctly used
+            if sum(Tin == t)~=length(Tin)
+                error('WARNING: line 88 the kernel density estimation is using a different set of observation time points to return the filtered spike pattern\nThe # of time points used by ssvkernel is %d when we are asking for %d.\n', length(t),length(Tin));
+            end
         end
         
         % y is a density function that sums to 1
@@ -589,10 +570,24 @@ if classId ~= 0
         VocType{isound}=voctype{isound};
         TDT_wavfiles{isound}=response.tdt_wavfile;
         Original_wavfiles{isound}=response.original_wavfile;
-        if strcmp(response.stim_type,'call')
-            ESex{isound}=response.stim_source_sex;
-            Eage{isound}=response.callerAge;
-            Erelated{isound}=response.stim_source;
+        if strcmp(response.stim_type,'call') || strcmp(response.stim_type,'song')
+            [~,F,~] = fileparts(response.original_wavfile);
+            if strcmp(F(1:4), 'STRF')
+                Ename{isound} = F([1:10 end]);
+                ESex{isound}='m'; % It's a song... so can only be a male!!
+                Eage{isound}='NaN';
+                Erelated{isound}='unfamiliar'; % Old song, unfamiliar to the subject
+            elseif strcmp(response.stim_type,'song') && ~strcmp(F(1:4), 'STRF')
+                Ename{isound} = F([1:10 12]);
+                ESex{isound}=response.stim_source_sex;
+                Eage{isound}='NaN';
+                Erelated{isound}=response.stim_source;
+            else
+                Ename{isound} = F([1:10 12]);
+                ESex{isound}=response.stim_source_sex;
+                Eage{isound}=response.callerAge;
+                Erelated{isound}=response.stim_source;
+            end
             if ~isempty(OldWav)
                 VocBank_Wavfiles{isound}=OldWav{VocBank_idx, 3};
             end
@@ -600,6 +595,7 @@ if classId ~= 0
             ESex{isound}='NaN';
             Eage{isound}='NaN';
             Erelated{isound}='NaN';
+            Ename{isound}='NaN';
             if ~isempty(OldWav)
                 VocBank_Wavfiles{isound}=OldWav{VocBank_idx, 3};
             end
@@ -614,10 +610,12 @@ if classId ~= 0
     Res.TDT_wavfiles=TDT_wavfiles(1:nfiles); % The name of same previous wav stim given by TDT (stim1, stim2.... stim136...)
     Res.WavIndices = WavIndices(1:nfiles); % begining and end indices of each section within the TDT_wavfiles, just to be able to retrieve the wavform if needed
     Res.SectionWave=SectionWave(1:nfiles);
+    Res.Samprate = Samprate(1:nfiles);
     Res.SectionLength = SectionLength(1:nfiles); % duration of each section in ms
     Res.ESex=ESex(1:nfiles); % Sex of the emitter of the vocalization
     Res.Eage=Eage(1:nfiles);  % Age of the emitter of the vocalization
     Res.Erelated=Erelated(1:nfiles); % Relation of the emitter to the subject (familiar, unfamiliar, self)
+    Res.Ename=Ename(1:nfiles); % Identity of the emitter
     Res.Trials=Trials(1:nfiles); % Contains the spike arrival times in ms from the begining of the section and not in ms from the begining of the stim as in h5 files!!!
     Res.PSTH=PSTH(1:nfiles);
     Res.KDE_Rate=KDE_Rate(1:nfiles); % Kernel density estimate of the rate for each section
