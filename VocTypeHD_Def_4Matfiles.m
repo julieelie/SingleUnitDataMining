@@ -37,7 +37,7 @@ else %we are on strfinator or a cluster machine
     addpath(genpath('/auto/fhome/julie/Code/GeneralCode'));
     addpath(genpath('/auto/fhome/julie/Code/strflab'));
     addpath(genpath('/auto/fhome/julie/Code/tlab/src'));
-    StimDir = '/auto/tdrive/fdata/julie/Stims';
+    StimDir = '/auto/tdrive/fdata/julie/Stims/';
 end
 
 
